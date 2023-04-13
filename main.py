@@ -121,6 +121,8 @@ def create_user():
     values = (user['code'],)
     mycursor.execute(query, values)
     user_bd = mycursor.fetchall()
+    a = int(len(user['password']))
+    print(len(user['password']))
 
     if len(user_bd) != 0:
         return make_response(
@@ -133,7 +135,9 @@ def create_user():
     elif not (re.search(r'.{8,}', user['password']) and
               re.search(r'[A-Z]', user['password']) and
               re.search(r'\d', user['password']) and
-              re.search(r'[!@#$%^&*]', user['password'])):
+              re.search(r'[!@#$%^&*]', user['password']) and
+              int(len(user['password'])) <= 16 and
+              int(len(user['password'])) > 8):
         return make_response(
             jsonify(
                 message='Senha não atendeu os critérios.',
@@ -141,6 +145,7 @@ def create_user():
             )
         )
     else:
+        
         query = "INSERT INTO usuarios (codigo, nome, senha, cargo) VALUES (%s, %s, %s, %s)"
         values = (user['code'], user['name'].upper(),
                   user['password'], user['role'])
@@ -157,7 +162,7 @@ def create_user():
 ## CRIA CARGO##
 
 
-@app.route('/cargos/new', methods=['POST'])
+@app.route('/cargos/novo', methods=['POST'])
 def create_cargo():
     cargo = request.json
     mycursor = mydb.cursor()
@@ -168,19 +173,19 @@ def create_cargo():
     if len(cargo_bd) != 0:
         return make_response(
             jsonify(
-                message="Já existe usuário com esse código",
+                message="Já existe cargo com essa descrição",
                 statusCode=400
             )
         )
 
     else:
         query = "INSERT INTO cargos (descricao) VALUES (%s)"
-        values = (cargo['description'],)
+        values = (cargo['description'].upper(),)
         mycursor.execute(query, values)
         mydb.commit()
         return make_response(
             jsonify(
-                message='Usuário cadastrado com sucesso.',
+                message='Cargo cadastrado com sucesso.',
                 info=cargo,
                 statusCode=200
             )
