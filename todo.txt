@@ -1,3 +1,4 @@
 ####todolist####
 
 verificar se todas as requests estão rodando legal
+criar DELETE requests de teste do Postman
