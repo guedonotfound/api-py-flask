@@ -1,2 +1,3 @@
 ####todolist####
 
+verificar se todas as requests estão rodando legal
