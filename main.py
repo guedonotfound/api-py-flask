@@ -119,7 +119,7 @@ def create_user():
     user['name'] = user['name'].upper()
     mycursor = mydb.cursor()
     query = "SELECT * FROM usuarios WHERE codigo = %s"
-    values = (user['code'],)
+    values = (user['code'])
     mycursor.execute(query, values)
     user_bd = mycursor.fetchall()
     a = int(len(user['password']))
@@ -204,7 +204,7 @@ def delete_user():
     user = request.json
     mycursor = mydb.cursor()
     query = "SELECT * INTO usuarios WHERE codigo = %s"
-    values = user['code']
+    values = (user['code'])
     mycursor.execute(query, values)
     user_bd = mycursor.fetchall
     if user_bd[0][1] == user['code']:
@@ -234,23 +234,28 @@ def delete_user():
 def delete_cargo():
     cargo = request.json
     mycursor = mydb.cursor()
-
-    mycursor.execute(f"SELECT * INTO cargos WHERE codigo = '{cargo['description']}'")
+    query = "SELECT * FROM cargos WHERE descricao = %s"
+    values = (cargo['description'])
+    mycursor.execute(query, values)
     cargo_bd = mycursor.fetchall()
-    mycursor.execute(f"SELECT * INTO usuarios WHERE cargo = {cargo_bd[0][0]}")
+    query = "SELECT * FROM usuarios WHERE cargo = %s"
+    values = (user_bd[0][1])
+    mycursor.execute(query, values)
     user_bd = mycursor.fetchall()
-    if cargo_bd[0][1] == cargo['code']:
-        if user_bd[0][0] == cargo['code']:
+    if int(len(cargo_bd)) != 0:
+        if int(len(user_bd)) != 0:
             return make_response(
                 jsonify(
-                    mensagem='Não foi possível apagar o cargo pois possuem usuários vinculados a ele',
+                    mensagem='Não é possível apagar o cargo pois possuem usuários vinculados a ele',
                     info=user_bd,
                     statusCode=400
                 )
             )
 
         else:
-            mycursor.execute(f"DELETE FROM cargos WHERE ID = {cargo['id']}")
+            query = "DELETE FROM cargos WHERE id = %s"
+            values = cargo_bd[0][0]
+            mycursor.execute(query, values)
             mydb.commit()
             return make_response(
                 jsonify(
@@ -263,7 +268,7 @@ def delete_cargo():
     else:
         return make_response(
             jsonify(
-                mensagem='Não existe cargo com esse código.',
+                mensagem='Não existe cargo com essa descrição.',
                 statusCode=400
             )
         )

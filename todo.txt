@@ -1,6 +1,5 @@
 ####todolist####
 
-arrumar SLQ INJECTION nos DELETE requests da API
 criar DELETE requests de teste do Postman
 verificar se todas as requests estão rodando legal
 transformar a CREATE_USER em VALIDATE_USER e separar em 3 funções diferentes:
