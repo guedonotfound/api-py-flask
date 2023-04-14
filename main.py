@@ -2,7 +2,6 @@ import mysql.connector
 from flask import Flask, make_response, jsonify, request
 from flask_cors import CORS
 import re
-import json
 
 
 mydb = mysql.connector.connect(
@@ -203,27 +202,35 @@ def create_cargo():
 def delete_user():
     user = request.json
     mycursor = mydb.cursor()
-    query = "SELECT * INTO usuarios WHERE codigo = %s"
+    query = "SELECT * FROM usuarios WHERE codigo = %s"
     values = (user['code'],)
     mycursor.execute(query, values)
-    user_bd = mycursor.fetchall
-    if user_bd[0][1] == user['code']:
-        query = "DELETE FROM usuarios WHERE id = %s"
-        values = user['id']
-        mycursor.execute(query, values)
-        mydb.commit()
-        return make_response(
-            jsonify(
-                mensagem='Usuário deletado com sucesso.',
-                info=user_bd,
-                statusCode=200
-            )
-        )
-    else:
+    user_bd = mycursor.fetchall()
+    if len(user_bd) == 0:
         return make_response(
             jsonify(
                 mensagem='Não existe usuário com esse código.',
                 statusCode=400
+            )
+        )
+    
+    else:
+        query = "DELETE FROM usuarios WHERE id = %s"
+        values = (user_bd[0][0],)
+        mycursor.execute(query, values)
+        mydb.commit()
+        user_json = {
+            "id": user_bd[0][0],
+            "code": user_bd[0][1],
+            "name": user_bd[0][2],
+            "password": user_bd[0][3],
+            "role": user_bd[0][4]
+        }
+        return make_response(
+            jsonify(
+                mensagem='Usuário deletado com sucesso.',
+                info=user_json,
+                statusCode=200
             )
         )
 
@@ -242,8 +249,8 @@ def delete_cargo():
     values = (cargo_bd[0][0],)
     mycursor.execute(query, values)
     user_bd = mycursor.fetchall()
-    if int(len(cargo_bd)) != 0:
-        if int(len(user_bd)) != 0:
+    if len(cargo_bd) != 0:
+        if len(user_bd) != 0:
             return make_response(
                 jsonify(
                     mensagem='Não é possível apagar o cargo pois possuem usuários vinculados a ele',
