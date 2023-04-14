@@ -200,7 +200,7 @@ def create_cargo():
 
 
 @app.route('/usuarios/delete', methods=['DELETE'])
-def delete_usuario():
+def delete_user():
     user = request.json
     mycursor = mydb.cursor()
     query = "SELECT * INTO usuarios WHERE codigo = %s"
