@@ -116,6 +116,7 @@ def verifica_login():
 @app.route('/usuarios/novo', methods=['POST'])
 def create_user():
     user = request.json
+    user['name'] = user['name'].upper()
     mycursor = mydb.cursor()
     query = "SELECT * FROM usuarios WHERE codigo = %s"
     values = (user['code'],)
@@ -131,24 +132,27 @@ def create_user():
                 statusCode=400
             )
         )
-
+    elif int(len(user['password'])) > 16 or int(len(user['password'])) < 8:
+        return make_response(
+            jsonify(
+                message='Senha precisa ter entre 8 e 16 caracteres.',
+                statusCode=400
+            )
+        )
     elif not (re.search(r'.{8,}', user['password']) and
               re.search(r'[A-Z]', user['password']) and
               re.search(r'\d', user['password']) and
-              re.search(r'[!@#$%^&*]', user['password']) and
-              int(len(user['password'])) <= 16 and
-              int(len(user['password'])) > 8):
+              re.search(r'[!@#$%^&*]', user['password'])):
         return make_response(
             jsonify(
-                message='Senha não atendeu os critérios.',
+                message=
+                    'Senha precisa ter pelo menos um número, uma letra maiúscula, uma letra minúscula e um caracter especial.',
                 statusCode=400
             )
         )
     else:
-        
         query = "INSERT INTO usuarios (codigo, nome, senha, cargo) VALUES (%s, %s, %s, %s)"
-        values = (user['code'], user['name'].upper(),
-                  user['password'], user['role'])
+        values = (user['code'], user['name'], user['password'], user['role'])
         mycursor.execute(query, values)
         mydb.commit()
         return make_response(
@@ -165,6 +169,7 @@ def create_user():
 @app.route('/cargos/novo', methods=['POST'])
 def create_cargo():
     cargo = request.json
+    cargo['description'] = cargo['description'].upper()
     mycursor = mydb.cursor()
     query = "SELECT * FROM cargos WHERE descricao = %s"
     values = (cargo['description'],)
@@ -180,7 +185,7 @@ def create_cargo():
 
     else:
         query = "INSERT INTO cargos (descricao) VALUES (%s)"
-        values = (cargo['description'].upper(),)
+        values = (cargo['description'])
         mycursor.execute(query, values)
         mydb.commit()
         return make_response(
