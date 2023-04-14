@@ -204,7 +204,7 @@ def delete_user():
     user = request.json
     mycursor = mydb.cursor()
     query = "SELECT * INTO usuarios WHERE codigo = %s"
-    values = (user['code'])
+    values = (user['code'],)
     mycursor.execute(query, values)
     user_bd = mycursor.fetchall
     if user_bd[0][1] == user['code']:
