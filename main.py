@@ -239,7 +239,7 @@ def delete_cargo():
     mycursor.execute(query)
     cargo_bd = mycursor.fetchall()
     query = "SELECT * FROM usuarios WHERE cargo = %s"
-    values = (user_bd[0][1])
+    values = (cargo_bd[0][0])
     mycursor.execute(query, values)
     user_bd = mycursor.fetchall()
     if int(len(cargo_bd)) != 0:
