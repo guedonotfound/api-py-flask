@@ -235,7 +235,7 @@ def delete_cargo():
     cargo = request.json
     mycursor = mydb.cursor()
     query = "SELECT * FROM cargos WHERE descricao = %s"
-    values = (cargo['description'])
+    values = (cargo['description'],)
     mycursor.execute(query, values)
     cargo_bd = mycursor.fetchall()
     query = "SELECT * FROM usuarios WHERE cargo = %s"
