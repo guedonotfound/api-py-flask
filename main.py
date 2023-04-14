@@ -199,15 +199,18 @@ def create_cargo():
 ## APAGA USUÁRIO##
 
 
-@app.route('/usuario/delete', methods=['DELETE'])
+@app.route('/usuarios/delete', methods=['DELETE'])
 def delete_usuario():
     user = request.json
     mycursor = mydb.cursor()
-    mycursor.execute(f"SELECT * INTO usuarios WHERE codigo = '{user['code']}'")
+    query = "SELECT * INTO usuarios WHERE codigo = %s"
+    values = user['code']
+    mycursor.execute(query, values)
     user_bd = mycursor.fetchall
-
     if user_bd[0][1] == user['code']:
-        mycursor.execute(f"DELETE FROM usuarios WHERE ID = {user['id']}")
+        query = "DELETE FROM usuarios WHERE id = %s"
+        values = user['id']
+        mycursor.execute(query, values)
         mydb.commit()
         return make_response(
             jsonify(
@@ -227,11 +230,12 @@ def delete_usuario():
 ## APAGA CARGO##
 
 
-@app.route('/cargo/delete', methods=['DELETE'])
+@app.route('/cargos/delete', methods=['DELETE'])
 def delete_cargo():
     cargo = request.json
     mycursor = mydb.cursor()
-    mycursor.execute(f"SELECT * INTO cargos WHERE codigo = '{cargo['code']}'")
+
+    mycursor.execute(f"SELECT * INTO cargos WHERE codigo = '{cargo['description']}'")
     cargo_bd = mycursor.fetchall()
     mycursor.execute(f"SELECT * INTO usuarios WHERE cargo = {cargo_bd[0][0]}")
     user_bd = mycursor.fetchall()
