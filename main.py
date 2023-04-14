@@ -185,7 +185,7 @@ def create_cargo():
 
     else:
         query = "INSERT INTO cargos (descricao) VALUES (%s)"
-        values = (cargo['description'])
+        values = (cargo['description'],)
         mycursor.execute(query, values)
         mydb.commit()
         return make_response(
@@ -239,7 +239,7 @@ def delete_cargo():
     mycursor.execute(query)
     cargo_bd = mycursor.fetchall()
     query = "SELECT * FROM usuarios WHERE cargo = %s"
-    values = (cargo_bd[0][0])
+    values = (cargo_bd[0][0],)
     mycursor.execute(query, values)
     user_bd = mycursor.fetchall()
     if int(len(cargo_bd)) != 0:
@@ -247,20 +247,24 @@ def delete_cargo():
             return make_response(
                 jsonify(
                     mensagem='Não é possível apagar o cargo pois possuem usuários vinculados a ele',
-                    info=user_bd,
+                    info=cargo_bd,
                     statusCode=400
                 )
             )
 
         else:
             query = "DELETE FROM cargos WHERE id = %s"
-            values = cargo_bd[0][0]
+            values = (cargo_bd[0][0],)
             mycursor.execute(query, values)
             mydb.commit()
+            cargo_json = {
+                "info": cargo_bd[0][0],
+                "description": cargo_bd[0][1]
+            }
             return make_response(
                 jsonify(
                     mensagem='Cargo deletado com sucesso.',
-                    info=cargo_bd,
+                    info=cargo_json,
                     statusCode=200
                 )
 
