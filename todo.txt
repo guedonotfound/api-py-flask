@@ -1,9 +1,5 @@
 ####todolist####
 
-transformar a CREATE_USER em VALIDATE_USER e separar em 3 funções diferentes:
-    validar o código;
-    validar a senha;
-    liberar o acesso no BD;
 criar UPDATE requests na API (para alteração de senha pelo usuário se ele quiser ou então de outros dados pelo gestor/admin)
 criar UPDATE requests de teste no Postman
 verificar de novo se tá tudo rodando legal
