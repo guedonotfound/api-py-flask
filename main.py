@@ -122,24 +122,24 @@ def verify_login():
 
 @app.route('/users/verify-user-code', methods=['GET'])
 def verify_user_code():
-    user = request.json
+    code = request.args.get('code')
     mycursor = mydb.cursor()
     query = "SELECT * FROM users WHERE code = %s"
-    values = (user['code'])
+    values = (code,)
     mycursor.execute(query, values)
     user_db = mycursor.fetchall()
     if len(user_db) == 0:
         return make_response(
             jsonify(
                 message='Código ainda não cadastrado no banco de dados.',
-                info=user,
+                info=code,
                 statusCode=400
             )
         )
     else:
         return make_response(
             jsonify(
-                info=user,
+                info=code,
                 statusCode=200
             )
         )
