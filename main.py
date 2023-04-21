@@ -118,6 +118,7 @@ def verify_login():
             )
         )
 
+##LIBERA USUÁRIO
 
 @app.route('/users/verify-user-code', methods=['GET'])
 def verify_user_code():
