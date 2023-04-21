@@ -131,7 +131,8 @@ def verify_user_code():
     user_db = mycursor.fetchall()
     user_json = {
         "code": user_db[0][1],
-        "name": user_db[0][2]
+        "name": user_db[0][2],
+        "access": user_db[0][5]
     }
     if len(user_db) == 0:
         return make_response(
