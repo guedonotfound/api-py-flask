@@ -118,7 +118,8 @@ def verify_login():
             )
         )
 
-##LIBERA USUÁRIO
+# LIBERA USUÁRIO
+
 
 @app.route('/users/verify-user-code', methods=['GET'])
 def verify_user_code():
@@ -128,6 +129,10 @@ def verify_user_code():
     values = (code,)
     mycursor.execute(query, values)
     user_db = mycursor.fetchall()
+    user_json = {
+        "code": user_db[0][1],
+        "name": user_db[0][2]
+    }
     if len(user_db) == 0:
         return make_response(
             jsonify(
@@ -139,7 +144,7 @@ def verify_user_code():
     else:
         return make_response(
             jsonify(
-                info=code,
+                info=user_json,
                 statusCode=200
             )
         )
@@ -148,6 +153,7 @@ def verify_user_code():
 @app.route('/users/verify-password', methods=['GET'])
 def verify_password():
     user = request.json
+    password = request.args.get('password')
     if len(user['password']) > 32 or len(user['password']) < 8:
         return make_response(
             jsonify(
