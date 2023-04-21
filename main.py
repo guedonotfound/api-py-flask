@@ -76,20 +76,19 @@ def get_roles():
 def verify_login():
     user = request.json
     mycursor = mydb.cursor()
-    mycursor.execute(f"SELECT * FROM users WHERE code = '{user['code']}'")
+    query = "SELECT * FROM users WHERE code = %s"
+    values = (user['code'],)
+    mycursor.execute(query, values)
     user_db = mycursor.fetchall()
     if len(user_db) != 0:
-        if user_db[0][3] == user['password']:
-            if user_db[0][5] == "S":
+        if user_db[0][5] == "S":
+            if user_db[0][3] == user['password']:
                 user_json = {
                     "id": user_db[0][0],
                     "code": user_db[0][1],
                     "name": user_db[0][2],
-                    "password": user_db[0][3],
-                    "role": user_db[0][4],
-                    "access": user_db[0][5]
+                    "role": user_db[0][4]
                 }
-
                 return make_response(
                     jsonify(
                         info=user_json,
@@ -99,14 +98,14 @@ def verify_login():
             else:
                 return make_response(
                     jsonify(
-                        message='Acesso ainda não liberado.',
+                        message='Senha incorreta.',
                         statusCode=400
                     )
                 )
         else:
             return make_response(
                 jsonify(
-                    message='Senha incorreta.',
+                    message='Acesso ainda não liberado.',
                     statusCode=400
                 )
             )
@@ -139,10 +138,10 @@ def verify_user_code():
         )
     else:
         user_json = {
-        "code": user_db[0][1],
-        "name": user_db[0][2],
-        "access": user_db[0][5]
-    }
+            "code": user_db[0][1],
+            "name": user_db[0][2],
+            "access": user_db[0][5]
+        }
         return make_response(
             jsonify(
                 info=user_json,
