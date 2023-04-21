@@ -158,11 +158,11 @@ def verify_password():
     if len(password) > 32 or len(password) < 8:
         return make_response(
             jsonify(
-                message='Senha precisa ter entre 8 e 16 caracteres.',
+                message='Senha precisa ter entre 8 e 32 caracteres.',
                 statusCode=400
             )
         )
-    elif not (re.search(r'.{8,}', password) and
+    if not (re.search(r'.{8,}', password) and
               re.search(r'[A-Z]', password) and
               re.search(r'\d', password) and
               re.search(r'[!@#$%^&*]', password)):
