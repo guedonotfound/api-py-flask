@@ -129,11 +129,6 @@ def verify_user_code():
     values = (code,)
     mycursor.execute(query, values)
     user_db = mycursor.fetchall()
-    user_json = {
-        "code": user_db[0][1],
-        "name": user_db[0][2],
-        "access": user_db[0][5]
-    }
     if len(user_db) == 0:
         return make_response(
             jsonify(
@@ -143,6 +138,11 @@ def verify_user_code():
             )
         )
     else:
+        user_json = {
+        "code": user_db[0][1],
+        "name": user_db[0][2],
+        "access": user_db[0][5]
+    }
         return make_response(
             jsonify(
                 info=user_json,
@@ -175,13 +175,13 @@ def verify_password():
     else:
         return make_response(
             jsonify(
-                info=user,
+                info=password,
                 statusCode=200
             )
         )
 
 
-@app.route('/users/validade', methods=['PUT'])
+@app.route('/users/validate', methods=['PUT'])
 def validate_user():
     user = request.json
     if user['access'] == "S":
