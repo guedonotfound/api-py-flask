@@ -154,7 +154,6 @@ def verify_user_code():
 
 @app.route('/users/verify-password', methods=['GET'])
 def verify_password():
-    user = request.json
     password = request.args.get('password')
     if len(user['password']) > 32 or len(user['password']) < 8:
         return make_response(
