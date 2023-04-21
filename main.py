@@ -155,17 +155,17 @@ def verify_user_code():
 @app.route('/users/verify-password', methods=['GET'])
 def verify_password():
     password = request.args.get('password')
-    if len(user['password']) > 32 or len(user['password']) < 8:
+    if len(password) > 32 or len(password) < 8:
         return make_response(
             jsonify(
                 message='Senha precisa ter entre 8 e 16 caracteres.',
                 statusCode=400
             )
         )
-    elif not (re.search(r'.{8,}', user['password']) and
-              re.search(r'[A-Z]', user['password']) and
-              re.search(r'\d', user['password']) and
-              re.search(r'[!@#$%^&*]', user['password'])):
+    elif not (re.search(r'.{8,}', password) and
+              re.search(r'[A-Z]', password) and
+              re.search(r'\d', password) and
+              re.search(r'[!@#$%^&*]', password)):
         return make_response(
             jsonify(
                 message='Senha precisa ter pelo menos um número, um caracter especial, uma letra maiúscula e uma minúscula.',
