@@ -1,6 +1,7 @@
 import mysql.connector
 from flask import Flask, make_response, jsonify, request
 from flask_cors import CORS
+import hashlib
 import re
 
 
@@ -75,6 +76,7 @@ def get_roles():
 @app.route('/users/login', methods=['POST'])
 def verify_login():
     user = request.json
+    user['password'] = hashlib.sha256((user['password']).encode('utf-8')).hexdigest()
     mycursor = mydb.cursor()
     query = "SELECT * FROM users WHERE code = %s"
     values = (user['code'],)
@@ -183,9 +185,10 @@ def verify_password():
 @app.route('/users/validate', methods=['PUT'])
 def validate_user():
     user = request.json
+    user['password'] = hashlib.sha256((user['password']).encode('utf-8')).hexdigest()
     if user['access'] == "S":
-        query = "UPDATE users SET access = 'S' WHERE code = %s"
-        values = (user['code'])
+        query = "UPDATE users SET access = %s AND password = %s WHERE code = %s"
+        values = ('S', user['password'], user['code'])
         mycursor = mydb.cursor()
         mycursor.execute(query, values)
         mydb.commit()
