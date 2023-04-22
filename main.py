@@ -17,9 +17,7 @@ app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-## LISTA USUÁRIOS##
-
-
+## LISTA USUÁRIOS
 @app.route('/users', methods=['GET'])
 def get_users():
     mycursor = mydb.cursor()
@@ -45,9 +43,7 @@ def get_users():
         )
     )
 
-## LISTA CARGOS##
-
-
+## LISTA CARGOS
 @app.route('/roles', methods=['GET'])
 def get_roles():
     mycursor = mydb.cursor()
@@ -70,9 +66,7 @@ def get_roles():
         )
     )
 
-## VALIDA LOGIN##
-
-
+## VALIDA LOGIN
 @app.route('/users/login', methods=['POST'])
 def verify_login():
     user = request.json
@@ -120,9 +114,7 @@ def verify_login():
             )
         )
 
-# LIBERA USUÁRIO
-
-
+## LIBERA USUÁRIO (VERIFICA CÓDIGO)
 @app.route('/users/verify-user-code', methods=['GET'])
 def verify_user_code():
     code = request.args.get('code')
@@ -152,7 +144,7 @@ def verify_user_code():
             )
         )
 
-
+## LIBERA USUÁRIO (VERIFICA SENHA)
 @app.route('/users/verify-password', methods=['GET'])
 def verify_password():
     password = request.args.get('password')
@@ -181,7 +173,7 @@ def verify_password():
             )
         )
 
-
+## LIBERA USUÁRIO (LIBERA/REVOGA ACESSO)
 @app.route('/users/validate', methods=['PUT'])
 def validate_user():
     user = request.json
@@ -209,9 +201,7 @@ def validate_user():
             )
         )
 
-## REMOVE ACESSO##
-
-
+## REMOVE ACESSO
 @app.route('/users/remove-access', methods=['PUT'])
 def remove_access():
     user = request.json
@@ -229,40 +219,7 @@ def remove_access():
     )
 
 
-## CRIA CARGO##
-@app.route('/roles/new', methods=['POST'])
-def create_role():
-    role = request.json
-    role['description'] = role['description'].upper()
-    mycursor = mydb.cursor()
-    query = "SELECT * FROM roles WHERE description = %s"
-    values = (role['description'],)
-    mycursor.execute(query, values)
-    role_db = mycursor.fetchall()
-    if len(role_db) != 0:
-        return make_response(
-            jsonify(
-                message="Já existe cargo com essa descrição",
-                statusCode=400
-            )
-        )
-
-    else:
-        query = "INSERT INTO roles (description) VALUES (%s)"
-        values = (role['description'],)
-        mycursor.execute(query, values)
-        mydb.commit()
-        return make_response(
-            jsonify(
-                message='Cargo cadastrado com sucesso.',
-                info=role,
-                statusCode=200
-            )
-        )
-
-## APAGA USUÁRIO##
-
-
+"""## APAGA USUÁRIO
 @app.route('/users/delete', methods=['DELETE'])
 def delete_user():
     user = request.json
@@ -299,9 +256,38 @@ def delete_user():
             )
         )
 
-## APAGA CARGO##
+## CRIA CARGO
+@app.route('/roles/new', methods=['POST'])
+def create_role():
+    role = request.json
+    role['description'] = role['description'].upper()
+    mycursor = mydb.cursor()
+    query = "SELECT * FROM roles WHERE description = %s"
+    values = (role['description'],)
+    mycursor.execute(query, values)
+    role_db = mycursor.fetchall()
+    if len(role_db) != 0:
+        return make_response(
+            jsonify(
+                message="Já existe cargo com essa descrição",
+                statusCode=400
+            )
+        )
 
+    else:
+        query = "INSERT INTO roles (description) VALUES (%s)"
+        values = (role['description'],)
+        mycursor.execute(query, values)
+        mydb.commit()
+        return make_response(
+            jsonify(
+                message='Cargo cadastrado com sucesso.',
+                info=role,
+                statusCode=200
+            )
+        )
 
+## APAGA CARGO
 @app.route('/roles/delete', methods=['DELETE'])
 def delete_role():
     role = request.json
@@ -347,7 +333,7 @@ def delete_role():
                 mensagem='Não existe cargo com essa descrição.',
                 statusCode=400
             )
-        )
+        )"""
 
 
 app.run(host='0.0.0.0', port=5000)
