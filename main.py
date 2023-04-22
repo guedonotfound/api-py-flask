@@ -76,7 +76,8 @@ def get_roles():
 @app.route('/users/login', methods=['POST'])
 def verify_login():
     user = request.json
-    user['password'] = hashlib.sha256((user['password']).encode('utf-8')).hexdigest()
+    user['password'] = hashlib.sha256(
+        (user['password']).encode('utf-8')).hexdigest()
     mycursor = mydb.cursor()
     query = "SELECT * FROM users WHERE code = %s"
     values = (user['code'],)
@@ -163,9 +164,9 @@ def verify_password():
             )
         )
     if not (re.search(r'.{8,}', password) and
-              re.search(r'[A-Z]', password) and
-              re.search(r'\d', password) and
-              re.search(r'[!@#$%^&*]', password)):
+            re.search(r'[A-Z]', password) and
+            re.search(r'\d', password) and
+            re.search(r'[!@#$%^&*]', password)):
         return make_response(
             jsonify(
                 message='Senha precisa ter pelo menos um número, um caracter especial, uma letra maiúscula e uma minúscula.',
@@ -184,7 +185,8 @@ def verify_password():
 @app.route('/users/validate', methods=['PUT'])
 def validate_user():
     user = request.json
-    user['password'] = hashlib.sha256((user['password']).encode('utf-8')).hexdigest()
+    user['password'] = hashlib.sha256(
+        (user['password']).encode('utf-8')).hexdigest()
     if user['access'] == "S":
         query = "UPDATE users SET access = %s AND password = %s WHERE code = %s"
         values = ('S', user['password'], user['code'])
@@ -207,10 +209,27 @@ def validate_user():
             )
         )
 
+## REMOVE ACESSO##
+
+
+@app.route('/users/remove-access', methods=['PUT'])
+def remove_access():
+    user = request.json
+    query = "UPDATE users SET access = %s WHERE code = %s"
+    values = ('N', user['code'])
+    mycursor = mydb.cursor()
+    mycursor.execute(query, values)
+    mydb.commit()
+    return make_response(
+        jsonify(
+            message='Acesso removido.',
+            info=user,
+            statusCode=200
+        )
+    )
+
 
 ## CRIA CARGO##
-
-
 @app.route('/roles/new', methods=['POST'])
 def create_role():
     role = request.json
