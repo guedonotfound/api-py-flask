@@ -179,12 +179,12 @@ def verify_password():
 @app.route('/users/validate', methods=['PUT'])
 def validate_user():
     user = request.json
+    mycursor = mydb.cursor()
     user['password'] = hashlib.sha256(
         (user['password']).encode('utf-8')).hexdigest()
     if user['access'] == "S":
         query = "UPDATE users SET access = %s AND password = %s WHERE code = %s"
         values = ('S', user['password'], user['code'])
-        mycursor = mydb.cursor()
         mycursor.execute(query, values)
         mydb.commit()
         return make_response(
@@ -207,9 +207,9 @@ def validate_user():
 @app.route('/users/remove-access', methods=['PUT'])
 def remove_access():
     user = request.json
+    mycursor = mydb.cursor()
     query = "UPDATE users SET access = %s WHERE code = %s"
     values = ('N', user['code'])
-    mycursor = mydb.cursor()
     mycursor.execute(query, values)
     mydb.commit()
     return make_response(
@@ -224,6 +224,7 @@ def remove_access():
 @app.route('/users/change-password', methods=['PUT'])
 def change_password():
     user = request.json
+    mycursor = mydb.cursor()
     if len(user['password']) <= 32 or len(user['password']) >= 8:    
         if not (re.search(r'.{8,}', user['password']) and
                 re.search(r'[A-Z]', user['password']) and
@@ -241,7 +242,6 @@ def change_password():
             (user['password']).encode('utf-8')).hexdigest()
             query = "UPDATE users SET password = %s WHERE code = %s"
             values = (user['password'], user['code'])
-            mycursor = mydb.cursor()
             mycursor.execute(query, values)
             mydb.commit()
             return make_response(
