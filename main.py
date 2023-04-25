@@ -148,28 +148,30 @@ def verify_user_code():
 @app.route('/users/verify-password', methods=['GET'])
 def verify_password():
     password = request.args.get('password')
-    if len(password) > 32 or len(password) < 8:
+    if len(password) <= 32 or len(password) >= 8:
+        if not (re.search(r'.{8,}', password) and
+                re.search(r'[A-Z]', password) and
+                re.search(r'\d', password) and
+                re.search(r'[!@#$%^&*]', password)):
+            return make_response(
+                jsonify(
+                    message='Senha precisa ter pelo menos um número, ' + 
+                        'um caracter especial, uma letra maiúscula e uma minúscula.',
+                    statusCode=400
+                )
+            )
+        else:
+            return make_response(
+                jsonify(
+                    info=password,
+                    statusCode=200
+                )
+            )
+    else:
         return make_response(
             jsonify(
                 message='Senha precisa ter entre 8 e 32 caracteres.',
                 statusCode=400
-            )
-        )
-    if not (re.search(r'.{8,}', password) and
-            re.search(r'[A-Z]', password) and
-            re.search(r'\d', password) and
-            re.search(r'[!@#$%^&*]', password)):
-        return make_response(
-            jsonify(
-                message='Senha precisa ter pelo menos um número, um caracter especial, uma letra maiúscula e uma minúscula.',
-                statusCode=400
-            )
-        )
-    else:
-        return make_response(
-            jsonify(
-                info=password,
-                statusCode=200
             )
         )
 
@@ -218,8 +220,46 @@ def remove_access():
         )
     )
 
+## ALTERAR SENHA
+@app.route('/users/change-password', methods=['PUT'])
+def change_password():
+    user = request.json
+    if len(user['password']) <= 32 or len(user['password']) >= 8:    
+        if not (re.search(r'.{8,}', user['password']) and
+                re.search(r'[A-Z]', user['password']) and
+                re.search(r'\d', user['password']) and
+                re.search(r'[!@#$%^&*]', user['password'])):
+            return make_response(
+                jsonify(
+                    message='Senha precisa ter pelo menos um número, ' + 
+                        'um caracter especial, uma letra maiúscula e uma minúscula.',
+                    statusCode=400
+                )
+            )
+        else:
+            user['password'] = hashlib.sha256(
+            (user['password']).encode('utf-8')).hexdigest()
+            query = "UPDATE users SET password = %s WHERE code = %s"
+            values = (user['password'], user['code'])
+            mycursor = mydb.cursor()
+            mycursor.execute(query, values)
+            mydb.commit()
+            return make_response(
+                jsonify(
+                    message = 'Senha alterada com sucesso',
+                    statusCode=200
+                )
+            )
+    else:
+        return make_response(
+            jsonify(
+                message='Senha precisa ter entre 8 e 32 caracteres.',
+                statusCode=400
+            )
+        )
 
-"""## APAGA USUÁRIO
+
+## APAGA USUÁRIO
 @app.route('/users/delete', methods=['DELETE'])
 def delete_user():
     user = request.json
@@ -333,7 +373,7 @@ def delete_role():
                 mensagem='Não existe cargo com essa descrição.',
                 statusCode=400
             )
-        )"""
+        )
 
 
 app.run(host='0.0.0.0', port=5000)
