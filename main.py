@@ -375,5 +375,30 @@ def delete_role():
             )
         )
 
+##VERIFICA PEÇA##
+@app.route('/parts/verify-part-code', METHODS=['GET'])
+def verify_part_code():
+    part = request.args.get('code')
+    mycursor = mydb.cursor()
+    query = "SELECT * FROM parts WHERE code = %s"
+    values = (part,)
+    mycursor.execute(query, values)
+    part_db = mycursor.fetchall()
+    if len(part_db) == 0:
+        make_response(
+            jsonify(
+                message = "Peça não cadastrada",
+                statusCode = 400
+            )
+        )
+    else:
+        make_response(
+            jsonify(
+                info = part,
+                statusCode = 200
+            )
+        )
+
+
 
 app.run(host='0.0.0.0', port=5000)
