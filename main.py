@@ -376,7 +376,7 @@ def delete_role():
         )
 
 ##VERIFICA PEÇA##
-@app.route('/parts/verify-part-code', METHODS=['GET'])
+@app.route('/parts/verify-part-code', methods=['GET'])
 def verify_part_code():
     part = request.args.get('code')
     mycursor = mydb.cursor()
