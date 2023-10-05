@@ -2,3 +2,30 @@
 
 criar UPDATE requests de teste no Postman
 verificar de novo se tá tudo rodando legal
+
+• BD:parts
+     num de série (PK)
+     modelo_prefixo
+     status
+     foto
+     inspetor
+     supervisor
+     data
+     validado
+
+• BD:model_parts
+     prefixo (PK)
+     modelo
+
+• tela de controle de peças:
+GET: 
+     num de série
+     modelo
+     situação
+     foto
+POST: 
+     data
+     num de série
+     nome do inspetor
+     validado
+     supervisor
