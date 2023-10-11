@@ -21,7 +21,8 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 @app.route('/users', methods=['GET'])
 def get_users():
     mycursor = mydb.cursor()
-    mycursor.execute("SELECT * FROM users")
+    query = "SELECT * FROM users"
+    mycursor.execute(query)
     users_db = mycursor.fetchall()
     mycursor.close()
     list_users = list()
@@ -47,7 +48,8 @@ def get_users():
 @app.route('/roles', methods=['GET'])
 def get_roles():
     mycursor = mydb.cursor()
-    mycursor.execute("SELECT * FROM roles")
+    query = "SELECT * FROM roles"
+    mycursor.execute(query)
     roles_db = mycursor.fetchall()
 
     list_roles = list()
@@ -65,6 +67,59 @@ def get_roles():
             statusCode=200
         )
     )
+
+## LISTA PEÇAS
+@app.route('/parts', methods=['GET'])
+def get_parts():
+    mycursor = mydb.cursor()
+    query = "SELECT * FROM parts"
+    mycursor.execute(query)
+    parts_db = mycursor.fetchall()
+
+    list_parts = list()
+    for role in parts_db:
+        list_parts.append(
+            {
+                'id': role[0],
+                'description': role[1]
+            }
+        )
+
+    return make_response(
+        jsonify(
+            info=list_parts,
+            statusCode=200
+        )
+    )
+
+## VALIDA PEÇAS
+@app.route('/parts/validate', methods=['PUT'])
+def validate_part():
+    part = request.json
+    mycursor = mydb.cursor()
+    if part['supervisor'] == "Y":
+        query = "UPDATE parts SET validation_date = %s AND validation = '%s' AND supervisor = '%s'"
+        values = (part['validation_date'], part['validation'], part['supervisor'])
+        mycursor.execute(query, values)
+        mydb.commit()
+        return make_response(
+            jsonify(
+                info=part,
+                statusCode=200
+            )
+        )
+    else:
+        query = "UPDATE parts SET inspection_date = %s AND inspection = '%s' AND inspector = '%s'"
+        values = (part['inspection_date'], part['inspection'], part['inspector'])
+        mycursor.execute(query, values)
+        mydb.commit()
+        return make_response(
+            jsonify(
+                info=part,
+                statusCode=200
+            )
+        )
+
 
 ## VALIDA LOGIN
 @app.route('/users/login', methods=['POST'])
@@ -258,143 +313,26 @@ def change_password():
             )
         )
 
-
-## APAGA USUÁRIO
-@app.route('/users/delete', methods=['DELETE'])
-def delete_user():
-    user = request.json
-    mycursor = mydb.cursor()
-    query = "SELECT * FROM users WHERE code = %s"
-    values = (user['code'],)
-    mycursor.execute(query, values)
-    user_db = mycursor.fetchall()
-    if len(user_db) == 0:
-        return make_response(
-            jsonify(
-                mensagem='Não existe usuário com esse código.',
-                statusCode=400
-            )
-        )
-
-    else:
-        query = "DELETE FROM users WHERE id = %s"
-        values = (user_db[0][0],)
-        mycursor.execute(query, values)
-        mydb.commit()
-        user_json = {
-            "id": user_db[0][0],
-            "code": user_db[0][1],
-            "name": user_db[0][2],
-            "password": user_db[0][3],
-            "role": user_db[0][4]
-        }
-        return make_response(
-            jsonify(
-                mensagem='Usuário deletado com sucesso.',
-                info=user_json,
-                statusCode=200
-            )
-        )
-
-## CRIA CARGO
-@app.route('/roles/new', methods=['POST'])
-def create_role():
-    role = request.json
-    role['description'] = role['description'].upper()
-    mycursor = mydb.cursor()
-    query = "SELECT * FROM roles WHERE description = %s"
-    values = (role['description'],)
-    mycursor.execute(query, values)
-    role_db = mycursor.fetchall()
-    if len(role_db) != 0:
-        return make_response(
-            jsonify(
-                message="Já existe cargo com essa descrição",
-                statusCode=400
-            )
-        )
-
-    else:
-        query = "INSERT INTO roles (description) VALUES (%s)"
-        values = (role['description'],)
-        mycursor.execute(query, values)
-        mydb.commit()
-        return make_response(
-            jsonify(
-                message='Cargo cadastrado com sucesso.',
-                info=role,
-                statusCode=200
-            )
-        )
-
-## APAGA CARGO
-@app.route('/roles/delete', methods=['DELETE'])
-def delete_role():
-    role = request.json
-    mycursor = mydb.cursor()
-    query = f"SELECT * FROM roles WHERE description = '{role['description']}'"
-    values = (role['description'],)
-    mycursor.execute(query)
-    role_db = mycursor.fetchall()
-    query = "SELECT * FROM usuarios WHERE cargo = %s"
-    values = (role_db[0][0],)
-    mycursor.execute(query, values)
-    user_db = mycursor.fetchall()
-    if len(role_db) != 0:
-        if len(user_db) != 0:
-            return make_response(
-                jsonify(
-                    mensagem='Não é possível apagar o cargo pois possuem usuários vinculados a ele',
-                    info=role_db,
-                    statusCode=400
-                )
-            )
-
-        else:
-            query = "DELETE FROM cargos WHERE id = %s"
-            values = (role_db[0][0],)
-            mycursor.execute(query, values)
-            mydb.commit()
-            role_json = {
-                "info": role_db[0][0],
-                "description": role_db[0][1]
-            }
-            return make_response(
-                jsonify(
-                    mensagem='Cargo deletado com sucesso.',
-                    info=role_json,
-                    statusCode=200
-                )
-
-            )
-    else:
-        return make_response(
-            jsonify(
-                mensagem='Não existe cargo com essa descrição.',
-                statusCode=400
-            )
-        )
-
 ##VERIFICA PEÇA##
-@app.route('/parts/verify-part-code', methods=['GET'])
+@app.route('/parts/verify-prefix', methods=['GET'])
 def verify_part_code():
-    part = request.args.get('code')
+    prefix = request.args.get('prefix')
     mycursor = mydb.cursor()
-    query = "SELECT * FROM parts WHERE code = %s"
-    values = (part,)
+    query = "SELECT * FROM model_parts WHERE prefix = %s"
+    values = (prefix,)
     mycursor.execute(query, values)
-    part_db = mycursor.fetchall()
-    if len(part_db) == 0:
+    prefix_db = mycursor.fetchall()
+    if len(prefix_db) == 0:
         make_response(
             jsonify(
-                message = "Peça não cadastrada",
+                message = "Modelo não cadastrado",
                 statusCode = 400
             )
         )
     else:
         make_response(
             jsonify(
-                info = part,
+                info = prefix,
                 statusCode = 200
             )
         )
