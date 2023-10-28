@@ -5,17 +5,25 @@ import hashlib
 import re
 
 
-mydb = mysql.connector.connect(
+'''mydb = mysql.connector.connect(
     host='containers-us-west-27.railway.app',
     port=5883,
     user='root',
     password='DeqoFQzH6cjAb63vfoCa',
     database='railway',
+)'''
+
+mydb = mysql.connector.connect(
+    host='127.0.0.1',
+    port=3306,
+    user='root',
+    password='root',
+    database='bdteste',
 )
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers = ["Content-Type"])
 
 ## LISTA USUÁRIOS
 @app.route('/users', methods=['GET'])
@@ -32,8 +40,7 @@ def get_users():
                 'id': user[0],
                 'code': user[1],
                 'name': user[2],
-                'password': user[3],
-                'role': user[4]
+                'permission': user[4]
             }
         )
 
@@ -44,29 +51,31 @@ def get_users():
         )
     )
 
-## LISTA CARGOS
-@app.route('/roles', methods=['GET'])
-def get_roles():
+## LISTA UM USUÁRIO
+@app.route('/user/', methods=['GET'])
+def get_user():
+    code = request.args.get('code')
     mycursor = mydb.cursor()
-    query = "SELECT * FROM roles"
-    mycursor.execute(query)
-    roles_db = mycursor.fetchall()
-
-    list_roles = list()
-    for role in roles_db:
-        list_roles.append(
-            {
-                'id': role[0],
-                'description': role[1]
+    query = "SELECT * FROM users WHERE code = %s"
+    values = [code,]
+    mycursor.execute(query, values)
+    users_db = mycursor.fetchall()
+    mycursor.close()
+    for user in users_db:
+        list_user = {
+                'id': user[0],
+                'code': user[1],
+                'name': user[2],
+                'permission': user[4]
             }
-        )
 
     return make_response(
         jsonify(
-            info=list_roles,
+            info=list_user,
             statusCode=200
         )
     )
+
 
 ## LISTA PEÇAS
 @app.route('/parts', methods=['GET'])
@@ -77,11 +86,11 @@ def get_parts():
     parts_db = mycursor.fetchall()
 
     list_parts = list()
-    for role in parts_db:
+    for part in parts_db:
         list_parts.append(
             {
-                'id': role[0],
-                'description': role[1]
+                'num_serie': part[0],
+                'description': part[1]
             }
         )
 
@@ -92,8 +101,102 @@ def get_parts():
         )
     )
 
-## VALIDA PEÇAS
-@app.route('/parts/validate', methods=['PUT'])
+
+## LISTA MODEL
+@app.route('/model-parts', methods=['GET'])
+def get_models():
+    mycursor = mydb.cursor()
+    query = "SELECT * FROM model_parts"
+    mycursor.execute(query)
+    models_db = mycursor.fetchall()
+
+    list_models = list()
+    for model in models_db:
+        list_models.append(
+            {
+                'prefix': model[0],
+                'model': model[1]
+            }
+        )
+
+    return make_response(
+        jsonify(
+            info=list_models,
+            statusCode=200
+        )
+    )
+
+## INSERE MODEL
+@app.route('/model/save', methods=['POST'])
+def delete_model():
+    model = request.json
+    mycursor = mydb.cursor()
+    query = 'SELECT * FROM model_parts WHERE prefix = %s OR model = %s'
+    values = [model['prefix'],model['model']]
+    mycursor.execute(query, values)
+    model_db = mycursor.fetchall()
+    if len(model_db) == 1:
+        return make_response(
+            jsonify(
+                message='Prefixo ou modelo já cadastrado',
+                statusCode=500
+            )
+        )
+    else:
+        query = 'INSERT INTO model_parts(prefix, model) VALUES(upper(%s), upper(%s))'
+        values = [model['prefix'], model['model']]
+        mycursor.execute(query, values)
+        mydb.commit()
+        return make_response(
+            jsonify(
+                message='Modelo cadastrado com sucesso',
+                statusCode=200
+            )
+        )
+
+## DELETA MODEL
+@app.route('/delete-model/', methods=['DELETE'])
+def new_model():
+    prefix = request.args.get('prefix')
+    mycursor = mydb.cursor()
+    query = 'DELETE FROM model_parts WHERE prefix = %s'
+    values = [prefix,]
+    mycursor.execute(query, values)
+    mydb.commit()
+    return make_response(
+        jsonify(
+            message='Modelo deletado com sucesso',
+            statusCode=200
+        )
+    )
+
+## VALIDA NUM
+@app.route('/control/', methods=['GET'])
+def validate_model():
+    prefix = request.args.get('prefix')
+    mycursor = mydb.cursor()
+    query = 'SELECT * FROM model_parts WHERE prefix = %s'
+    values = [prefix[0: 2],]
+    mycursor.execute(query, values)
+    model_bd = mycursor.fetchall()
+    if len(model_bd) == 1:
+        return make_response(
+            jsonify(
+                message="Prefixo validado",
+                statusCode=200
+            )
+        )
+    else:
+        return make_response(
+            jsonify(
+                message="Prefixo não validado",
+                statusCode=400
+            )
+        )
+
+
+## INSERE PEÇA
+@app.route('/parts/save', methods=['PUT'])
 def validate_part():
     part = request.json
     mycursor = mydb.cursor()
@@ -258,19 +361,18 @@ def validate_user():
             )
         )
 
-## REMOVE ACESSO
-@app.route('/users/remove-access', methods=['PUT'])
+## ALTERA PERMISSÃO
+@app.route('/users/permission', methods=['PUT'])
 def remove_access():
     user = request.json
     mycursor = mydb.cursor()
-    query = "UPDATE users SET access = %s WHERE code = %s"
-    values = ('N', user['code'])
+    query = "UPDATE users SET permission = %s WHERE code = %s"
+    values = (user['permission'], user['code'])
     mycursor.execute(query, values)
     mydb.commit()
     return make_response(
         jsonify(
-            message='Acesso removido.',
-            info=user,
+            message='Permissão alterada.',
             statusCode=200
         )
     )
