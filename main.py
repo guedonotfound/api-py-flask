@@ -363,7 +363,7 @@ def validate_user():
 
 ## ALTERA PERMISSÃO
 @app.route('/users/permission', methods=['PUT'])
-def remove_access():
+def alter_permission():
     user = request.json
     mycursor = mydb.cursor()
     query = "UPDATE users SET permission = %s WHERE code = %s"
@@ -372,7 +372,7 @@ def remove_access():
     mydb.commit()
     return make_response(
         jsonify(
-            message='Permissão alterada.',
+            message='Permissão alterada',
             statusCode=200
         )
     )
