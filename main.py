@@ -135,7 +135,6 @@ def get_one_part():
     values = [serial_number[2:5],]
     mycursor.execute(query, values)
     part_db = mycursor.fetchall()
-    print(serial_number[2:])
     if part_db[0][5] != None:
         query = "SELECT * FROM parts p, model_parts m, users u WHERE p.model_prefix = m.prefix AND serial_number = %s AND u.code = %s"
         values = [serial_number[2:], part_db[0][5]]
@@ -300,8 +299,8 @@ def validate_part():
             )
         )
     else:
-        query = "UPDATE parts SET datetime_valid = %s AND validation = %s AND supervisor = %s WHERE serial_number = %s"
-        values = (str(datetime.datetime.now())[:19], part['validation'], part['codeSupervisor'], part['serie'][2:])
+        query = "UPDATE parts SET datetime_valid = %s, validation = %s, supervisor = %s WHERE serial_number = %s"
+        values = (str(datetime.datetime.now())[:19], part['finalCheck'], part['codeSupervisor'], part['serie'][2:])
         mycursor.execute(query, values)
         mydb.commit()
         return make_response(
