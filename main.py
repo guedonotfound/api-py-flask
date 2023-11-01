@@ -4,6 +4,7 @@ from flask import Flask, make_response, jsonify, request
 from flask_cors import CORS
 import hashlib
 import re
+import TelegramAPI as TG
 
 
 '''mydb = mysql.connector.connect(
@@ -357,6 +358,8 @@ def verify_login():
             )
         )
 
+
+
 ## LIBERA USUÁRIO (VERIFICA CÓDIGO)
 @app.route('/users/verify-user-code', methods=['GET'])
 def verify_user_code():
@@ -408,38 +411,18 @@ def alter_permission():
 def change_password():
     user = request.json
     mycursor = mydb.cursor()
-    if len(user['password']) <= 32 or len(user['password']) >= 8:    
-        if not (re.search(r'.{8,}', user['password']) and
-                re.search(r'[A-Z]', user['password']) and
-                re.search(r'\d', user['password']) and
-                re.search(r'[!@#$%^&*]', user['password'])):
-            return make_response(
-                jsonify(
-                    message='Senha precisa ter pelo menos um número, ' + 
-                        'um caracter especial, uma letra maiúscula e uma minúscula.',
-                    statusCode=400
-                )
-            )
-        else:
-            user['password'] = hashlib.sha256(
-            (user['password']).encode('utf-8')).hexdigest()
-            query = "UPDATE users SET password = %s WHERE code = %s"
-            values = (user['password'], user['code'])
-            mycursor.execute(query, values)
-            mydb.commit()
-            return make_response(
-                jsonify(
-                    message = 'Senha alterada com sucesso',
-                    statusCode=200
-                )
-            )
-    else:
-        return make_response(
-            jsonify(
-                message='Senha precisa ter entre 8 e 32 caracteres.',
-                statusCode=400
-            )
+    user['password'] = hashlib.sha256(
+    (user['password']).encode('utf-8')).hexdigest()
+    query = "UPDATE users SET password = %s WHERE code = %s"
+    values = (user['password'], user['code'])
+    mycursor.execute(query, values)
+    mydb.commit()
+    return make_response(
+        jsonify(
+            message = 'Senha alterada com sucesso',
+            statusCode=200
         )
+    )
 
 if __name__ == '__main__':
     app.debug = True
