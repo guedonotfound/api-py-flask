@@ -3,48 +3,47 @@ import datetime
 from flask import Flask, make_response, jsonify, request
 from flask_cors import CORS
 import hashlib
-import re
+import threading
 import TelegramAPI as TG
-
-
-'''mydb = mysql.connector.connect(
-    host='containers-us-west-27.railway.app',
-    port=5883,
-    user='root',
-    password='DeqoFQzH6cjAb63vfoCa',
-    database='railway',
-)'''
-
-mydb = mysql.connector.connect(
-    host='127.0.0.1',
-    port=3306,
-    user='root',
-    password='root',
-    database='bdteste',
-)
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
-CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers = ["Content-Type"])
+CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type"])
+flask_initialized = False
+telegram_bot_initialized = False
 
-## LISTA USUÁRIOS
+# Configurações de conexão com o banco de dados
+db_config = {
+    'host': '127.0.0.1',
+    'port': 3306,
+    'user': 'root',
+    'password': 'root',
+    'database': 'bdteste',
+}
+
+mydb = mysql.connector.connect(**db_config)
+
+def execute_query(query, values=None):
+    mycursor = mydb.cursor()
+    if values:
+        mycursor.execute(query, values)
+    else:
+        mycursor.execute(query)
+    return mycursor.fetchall()
+
+def serialize_user(user):
+    return {
+        'code': user[0],
+        'name': user[1],
+        'permission': user[3]
+    }
+
+# Rota para listar usuários
 @app.route('/users', methods=['GET'])
 def get_users():
-    mycursor = mydb.cursor()
     query = "SELECT * FROM users"
-    mycursor.execute(query)
-    users_db = mycursor.fetchall()
-    mycursor.close()
-    list_users = list()
-    for user in users_db:
-        list_users.append(
-            {
-                'code': user[0],
-                'name': user[1],
-                'permission': user[3]
-            }
-        )
-
+    users_db = execute_query(query)
+    list_users = [serialize_user(user) for user in users_db]
     return make_response(
         jsonify(
             info=list_users,
@@ -52,23 +51,14 @@ def get_users():
         )
     )
 
-## LISTA UM USUÁRIO
+# Rota para listar um usuário
 @app.route('/user/', methods=['GET'])
 def get_one_user():
     code = request.args.get('code')
-    mycursor = mydb.cursor()
     query = "SELECT * FROM users WHERE code = %s"
-    values = [code,]
-    mycursor.execute(query, values)
-    users_db = mycursor.fetchall()
-    mycursor.close()
-    for user in users_db:
-        list_user = {
-                'code': user[0],
-                'name': user[1],
-                'permission': user[3]
-            }
-
+    values = [code]
+    user_db = execute_query(query, values)
+    list_user = serialize_user(user_db[0]) if user_db else {}
     return make_response(
         jsonify(
             info=list_user,
@@ -76,7 +66,7 @@ def get_one_user():
         )
     )
 
-## LISTA PEÇAS
+# Rota para listar peças
 @app.route('/parts/', methods=['GET'])
 def get_parts():
     role = request.args.get('role')
@@ -95,7 +85,7 @@ def get_parts():
         model = mycursor.fetchall()
         serial_number = part[1] + str(part[0])
         data_hora = str(part[3])
-        if part[5] != None:
+        if part[5] is not None:
             query = "SELECT name FROM users WHERE code = %s"
             values = [part[5],]
             mycursor.execute(query, values)
@@ -127,7 +117,7 @@ def get_parts():
         )
     )
 
-## LISTA UMA PEÇA
+# Rota para listar uma peça
 @app.route('/part/', methods=['GET'])
 def get_one_part():
     serial_number = request.args.get('serial_number')
@@ -136,7 +126,7 @@ def get_one_part():
     values = [serial_number[2:5],]
     mycursor.execute(query, values)
     part_db = mycursor.fetchall()
-    if part_db[0][5] != None:
+    if part_db[0][5] is not None:
         query = "SELECT * FROM parts p, model_parts m, users u WHERE p.model_prefix = m.prefix AND serial_number = %s AND u.code = %s"
         values = [serial_number[2:], part_db[0][5]]
         mycursor.execute(query, values)
@@ -183,7 +173,7 @@ def get_one_part():
             )
         )
 
-## LISTA MODEL
+# Rota para listar modelos de peças
 @app.route('/model-parts', methods=['GET'])
 def get_models():
     mycursor = mydb.cursor()
@@ -207,13 +197,13 @@ def get_models():
         )
     )
 
-## INSERE MODEL
+# Rota para salvar um modelo de peça
 @app.route('/model/save', methods=['POST'])
-def delete_model():
+def save_model():
     model = request.json
     mycursor = mydb.cursor()
     query = 'SELECT * FROM model_parts WHERE prefix = %s OR model = %s'
-    values = [model['prefix'],model['model']]
+    values = [model['prefix'], model['model']]
     mycursor.execute(query, values)
     model_db = mycursor.fetchall()
     if len(model_db) == 1:
@@ -235,9 +225,9 @@ def delete_model():
             )
         )
 
-## DELETA MODEL
+# Rota para deletar um modelo de peça
 @app.route('/delete-model/', methods=['DELETE'])
-def new_model():
+def delete_model():
     prefix = request.args.get('prefix')
     mycursor = mydb.cursor()
     query = 'DELETE FROM model_parts WHERE prefix = %s'
@@ -251,9 +241,9 @@ def new_model():
         )
     )
 
-## VALIDA MODEL
+# Rota para verificar um código de modelo
 @app.route('/check-code/', methods=['GET'])
-def validate_model():
+def check_code():
     prefix = request.args.get('code')
     mycursor = mydb.cursor()
     query = 'SELECT * FROM model_parts WHERE prefix = %s'
@@ -271,7 +261,7 @@ def validate_model():
         return make_response(
             jsonify(
                 message="Peça desviada",
-                statusCode = 501
+                statusCode=501
             )
         )
     else:
@@ -282,13 +272,12 @@ def validate_model():
             )
         )
 
-
-## VALIDA PEÇA
+# Rota para validar uma peça
 @app.route('/parts/validate', methods=['PUT'])
 def validate_part():
     part = request.json
     mycursor = mydb.cursor()
-    if part['codeSupervisor'] == None:
+    if part['codeSupervisor'] is None:
         query = "UPDATE parts SET datetime_inspec = %s, status = %s, inspector = %s WHERE serial_number = %s"
         values = (str(datetime.datetime.now())[:19], part['situation'], part['codeInspector'], part['serie'][2:])
         mycursor.execute(query, values)
@@ -311,12 +300,10 @@ def validate_part():
             )
         )
 
-
-## VALIDA LOGIN
+# Rota para validar o login de um usuário
 @app.route('/users/login', methods=['POST'])
 def verify_login():
     user = request.json
-    ##user['password'] = hashlib.sha256((user['password']).encode('utf-8')).hexdigest()
     mycursor = mydb.cursor()
     query = "SELECT * FROM users WHERE code = %s"
     values = (user['code'],)
@@ -358,9 +345,7 @@ def verify_login():
             )
         )
 
-
-
-## LIBERA USUÁRIO (VERIFICA CÓDIGO)
+# Rota para verificar o código de um usuário
 @app.route('/users/verify-user-code', methods=['GET'])
 def verify_user_code():
     code = request.args.get('code')
@@ -390,7 +375,7 @@ def verify_user_code():
             )
         )
 
-## ALTERA PERMISSÃO
+# Rota para alterar a permissão de um usuário
 @app.route('/users/permission', methods=['PUT'])
 def alter_permission():
     user = request.json
@@ -406,25 +391,33 @@ def alter_permission():
         )
     )
 
-## ALTERAR SENHA
+# Rota para alterar a senha de um usuário
 @app.route('/users/change-password', methods=['PUT'])
 def change_password():
     user = request.json
     mycursor = mydb.cursor()
-    user['password'] = hashlib.sha256(
-    (user['password']).encode('utf-8')).hexdigest()
+    user['password'] = hashlib.sha256((user['password']).encode('utf-8')).hexdigest()
     query = "UPDATE users SET password = %s WHERE code = %s"
     values = (user['password'], user['code'])
     mycursor.execute(query, values)
     mydb.commit()
     return make_response(
         jsonify(
-            message = 'Senha alterada com sucesso',
+            message='Senha alterada com sucesso',
             statusCode=200
         )
     )
 
+def main():
+    global flask_initialized
+
+    if not flask_initialized:
+        flask_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000})
+        flask_thread.start()
+        flask_initialized = True
+
+    telegram_thread = threading.Thread(target=TG.run_telegram_bot)
+    telegram_thread.start()
+
 if __name__ == '__main__':
-    app.debug = True
-    app.run(host='0.0.0.0', port=5000)
-##app.run(host='0.0.0.0', port=5000)
+    main()
