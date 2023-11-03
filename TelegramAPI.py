@@ -18,6 +18,7 @@ def opcao1(message):
         bot.send_message(user_id, texto)
         if user_states.get(user_id) == "Bloqueado" and user_responses.get(user_id):
             bot.delete_message(user_id, user_responses[user_id])
+            user_states[user_id] = "Aguardando_Opcao"
 
 @bot.message_handler(commands=["opcao2"])
 def opcao2(message):
@@ -30,6 +31,7 @@ def opcao2(message):
         bot.send_message(user_id, texto)
         if user_states.get(user_id) == "Bloqueado" and user_responses.get(user_id):
             bot.delete_message(user_id, user_responses[user_id])
+            user_states[user_id] = "Aguardando_Opcao"
 
 @bot.message_handler(func=lambda message: user_states.get(message.chat.id) != "Bloqueado")
 def responder(message):
@@ -44,4 +46,6 @@ def responder(message):
     msg = bot.send_message(user_id, texto)
     user_responses[user_id] = msg.message_id
 
-bot.polling()
+def run_telegram_bot():
+    print("Iniciando bot do Telegram")
+    bot.polling()
