@@ -282,6 +282,8 @@ def validate_part():
         values = (str(datetime.datetime.now())[:19], part['situation'], part['codeInspector'], part['serie'][2:])
         mycursor.execute(query, values)
         mydb.commit()
+        if part['situation'] == 'N':
+            TG.send_denied_inspec(part['codeInspector'], part['inspector'], part['serie'])
         return make_response(
             jsonify(
                 message="Inspeção registrada",
@@ -408,16 +410,77 @@ def change_password():
         )
     )
 
-def main():
-    global flask_initialized
+# Rota para liberar o acesso do usuário
+@app.route('/users/ask-access/', methods=['GET'])
+def ask_access():
+    user = request.args.get('code')
+    query = "SELECT * FROM users WHERE code = %s"
+    values = [user]
+    user_db = execute_query(query, values)
+    if user_db[0][3] == 'Aguardando':
+        if user_db:
+            TG.send_message_to_chat(user_db[0][1], user)
+            return make_response(
+                jsonify(
+                    message = 'Solicitação enviada',
+                    statusCode = 200
+                )
+            )
+        else:
+            return make_response(
+                jsonify(
+                    message = 'Código não cadastrado',
+                    statusCode = 500
+                )
+            )
+    else:
+        return make_response(
+            jsonify(
+                message = 'Usuário já foi liberado',
+                statusCode = 500
+            )
+        )
 
-    if not flask_initialized:
-        flask_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000})
-        flask_thread.start()
-        flask_initialized = True
+# Rota para contabilizar peças aprovadas e reprovadas
+@app.route('/parts/count', methods=['GET'])
+def count_parts():
+    query_prefixes = "SELECT prefix FROM model_parts"
+    prefixes = [result[0] for result in execute_query(query_prefixes)]
+
+    results = {}
+    for prefix in prefixes:
+        query_aprovado = "SELECT COUNT(*) FROM parts WHERE model_prefix = %s AND validation = 'S'"
+        query_reprovado = "SELECT COUNT(*) FROM parts WHERE model_prefix = %s AND validation = 'N'"
+        
+        aprovados = execute_query(query_aprovado, (prefix,))
+        reprovados = execute_query(query_reprovado, (prefix,))
+        
+        results[prefix] = {
+            "prefixo": prefix,
+            "aprovados": aprovados[0][0],
+            "reprovados": reprovados[0][0]
+        }
+
+    return make_response(
+        jsonify(results=results, statusCode=200)
+    )
+    
+
+'''def get_access(reply, code):
+    mycursor = mydb.cursor()
+    if reply == 'Y':
+        query = "UPDATE users SET permission = 'Inspetor' WHERE code = %s"
+        values = [code]
+        mycursor.execute(query, values)
+        mydb.commit()
+    else:
+        pass'''
+
+
+
+if __name__ == '__main__':
+    flask_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000})
+    flask_thread.start()
 
     telegram_thread = threading.Thread(target=TG.run_telegram_bot)
     telegram_thread.start()
-
-if __name__ == '__main__':
-    main()
