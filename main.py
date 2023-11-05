@@ -1,5 +1,4 @@
 import mysql.connector
-import datetime
 from flask import Flask, make_response, jsonify, request
 from flask_cors import CORS
 import hashlib
@@ -70,26 +69,22 @@ def get_one_user():
 @app.route('/parts/', methods=['GET'])
 def get_parts():
     role = request.args.get('role')
-    mycursor = mydb.cursor()
     if role == "Inspetor":
         query = "SELECT * FROM parts WHERE validation is null and inspector is null"
     else:
         query = "SELECT * FROM parts WHERE validation is null and inspector is not null"
-    mycursor.execute(query)
-    parts_db = mycursor.fetchall()
+    parts_db = execute_query(query)
     list_parts = list()
     for part in parts_db:
         query = "SELECT model FROM model_parts WHERE prefix = %s"
         values = [part[1],]
-        mycursor.execute(query, values)
-        model = mycursor.fetchall()
+        model = execute_query(query, values)
         serial_number = part[1] + str(part[0])
         data_hora = str(part[3])
         if part[5] is not None:
             query = "SELECT name FROM users WHERE code = %s"
             values = [part[5],]
-            mycursor.execute(query, values)
-            inspector = mycursor.fetchall()
+            inspector = execute_query(query, values)
             list_parts.append(
                 {
                     'serial_number': serial_number,
@@ -121,16 +116,13 @@ def get_parts():
 @app.route('/part/', methods=['GET'])
 def get_one_part():
     serial_number = request.args.get('serial_number')
-    mycursor = mydb.cursor()
     query = "SELECT * FROM parts p, model_parts m WHERE p.model_prefix = m.prefix and serial_number = %s"
     values = [serial_number[2:5],]
-    mycursor.execute(query, values)
-    part_db = mycursor.fetchall()
+    part_db = execute_query(query, values)
     if part_db[0][5] is not None:
         query = "SELECT * FROM parts p, model_parts m, users u WHERE p.model_prefix = m.prefix AND serial_number = %s AND u.code = %s"
         values = [serial_number[2:], part_db[0][5]]
-        mycursor.execute(query, values)
-        part_db = mycursor.fetchall()
+        part_db = execute_query(query, values)
         for part in part_db:
             serial_number = part[1] + str(part[0])
             data_hora = str(part[3])
@@ -176,11 +168,8 @@ def get_one_part():
 # Rota para listar modelos de peças
 @app.route('/model-parts', methods=['GET'])
 def get_models():
-    mycursor = mydb.cursor()
     query = "SELECT * FROM model_parts"
-    mycursor.execute(query)
-    models_db = mycursor.fetchall()
-
+    models_db = execute_query(query)
     list_models = list()
     for model in models_db:
         list_models.append(
@@ -201,11 +190,9 @@ def get_models():
 @app.route('/model/save', methods=['POST'])
 def save_model():
     model = request.json
-    mycursor = mydb.cursor()
     query = 'SELECT * FROM model_parts WHERE prefix = %s OR model = %s'
     values = [model['prefix'], model['model']]
-    mycursor.execute(query, values)
-    model_db = mycursor.fetchall()
+    model_db = execute_query(query, values)
     if len(model_db) == 1:
         return make_response(
             jsonify(
@@ -216,7 +203,7 @@ def save_model():
     else:
         query = 'INSERT INTO model_parts(prefix, model) VALUES(upper(%s), upper(%s))'
         values = [model['prefix'], model['model']]
-        mycursor.execute(query, values)
+        execute_query(query, values)
         mydb.commit()
         return make_response(
             jsonify(
@@ -229,10 +216,9 @@ def save_model():
 @app.route('/delete-model/', methods=['DELETE'])
 def delete_model():
     prefix = request.args.get('prefix')
-    mycursor = mydb.cursor()
     query = 'DELETE FROM model_parts WHERE prefix = %s'
     values = [prefix,]
-    mycursor.execute(query, values)
+    execute_query(query, values)
     mydb.commit()
     return make_response(
         jsonify(
@@ -245,12 +231,10 @@ def delete_model():
 @app.route('/check-code/', methods=['GET'])
 def check_code():
     prefix = request.args.get('code')
-    mycursor = mydb.cursor()
     query = 'SELECT * FROM model_parts WHERE prefix = %s'
     values = [prefix[0:2],]
-    mycursor.execute(query, values)
-    model_bd = mycursor.fetchall()
-    if len(model_bd) == 1:
+    model_db = execute_query(query, values)
+    if len(model_db) == 1:
         return make_response(
             jsonify(
                 message="Prefixo validado",
@@ -276,11 +260,10 @@ def check_code():
 @app.route('/parts/validate', methods=['PUT'])
 def validate_part():
     part = request.json
-    mycursor = mydb.cursor()
     if part['codeSupervisor'] is None:
-        query = "UPDATE parts SET datetime_inspec = %s, status = %s, inspector = %s WHERE serial_number = %s"
-        values = (str(datetime.datetime.now())[:19], part['situation'], part['codeInspector'], part['serie'][2:])
-        mycursor.execute(query, values)
+        query = "UPDATE parts SET datetime_inspec = NOW(), status = %s, inspector = %s WHERE serial_number = %s"
+        values = (part['situation'], part['codeInspector'], part['serie'][2:])
+        execute_query(query, values)
         mydb.commit()
         if part['situation'] == 'N':
             TG.send_denied_inspec(part['codeInspector'], part['inspector'], part['serie'])
@@ -291,9 +274,9 @@ def validate_part():
             )
         )
     else:
-        query = "UPDATE parts SET datetime_valid = %s, validation = %s, supervisor = %s WHERE serial_number = %s"
-        values = (str(datetime.datetime.now())[:19], part['finalCheck'], part['codeSupervisor'], part['serie'][2:])
-        mycursor.execute(query, values)
+        query = "UPDATE parts SET datetime_valid = NOW(), validation = %s, supervisor = %s WHERE serial_number = %s"
+        values = (part['finalCheck'], part['codeSupervisor'], part['serie'][2:])
+        execute_query(query, values)
         mydb.commit()
         return make_response(
             jsonify(
@@ -306,14 +289,14 @@ def validate_part():
 @app.route('/users/login', methods=['POST'])
 def verify_login():
     user = request.json
-    mycursor = mydb.cursor()
     query = "SELECT * FROM users WHERE code = %s"
     values = (user['code'],)
-    mycursor.execute(query, values)
-    user_db = mycursor.fetchall()
+    user_db = execute_query(query, values)
     if len(user_db) != 0:
         if user_db[0][3] == "Supervisor" or user_db[0][3] == "Inspetor":
-            if user_db[0][2] == user['password']:
+            print(user['password'])
+            print(hashlib.sha256((user['password']).encode('utf-8')).hexdigest())
+            if user_db[0][2] == hashlib.sha256((user['password']).encode('utf-8')).hexdigest():
                 user_json = {
                     "code": user_db[0][0],
                     "name": user_db[0][1],
@@ -351,11 +334,9 @@ def verify_login():
 @app.route('/users/verify-user-code', methods=['GET'])
 def verify_user_code():
     code = request.args.get('code')
-    mycursor = mydb.cursor()
     query = "SELECT * FROM users WHERE code = %s"
     values = (code,)
-    mycursor.execute(query, values)
-    user_db = mycursor.fetchall()
+    user_db = execute_query(query, values)
     if len(user_db) == 0:
         return make_response(
             jsonify(
@@ -381,10 +362,9 @@ def verify_user_code():
 @app.route('/users/permission', methods=['PUT'])
 def alter_permission():
     user = request.json
-    mycursor = mydb.cursor()
     query = "UPDATE users SET permission = %s WHERE code = %s"
     values = (user['permission'], user['code'])
-    mycursor.execute(query, values)
+    execute_query(query, values)
     mydb.commit()
     return make_response(
         jsonify(
@@ -393,53 +373,52 @@ def alter_permission():
         )
     )
 
-# Rota para alterar a senha de um usuário
-@app.route('/users/change-password', methods=['PUT'])
-def change_password():
-    user = request.json
-    mycursor = mydb.cursor()
-    user['password'] = hashlib.sha256((user['password']).encode('utf-8')).hexdigest()
-    query = "UPDATE users SET password = %s WHERE code = %s"
-    values = (user['password'], user['code'])
-    mycursor.execute(query, values)
-    mydb.commit()
-    return make_response(
-        jsonify(
-            message='Senha alterada com sucesso',
-            statusCode=200
-        )
-    )
-
-# Rota para liberar o acesso do usuário
-@app.route('/users/ask-access/', methods=['GET'])
-def ask_access():
+# Rota para alterar a senha de um usuário (envia mensagem pelo bot)
+@app.route('/users/forgot-password/', methods=['GET'])
+def send_message_password():
     user = request.args.get('code')
     query = "SELECT * FROM users WHERE code = %s"
     values = [user]
     user_db = execute_query(query, values)
-    if user_db[0][3] == 'Aguardando':
-        if user_db:
-            TG.send_message_to_chat(user_db[0][1], user)
-            return make_response(
-                jsonify(
-                    message = 'Solicitação enviada',
-                    statusCode = 200
-                )
+    if user_db:
+        TG.send_password_message(user_db[0][4], user)
+        return make_response(
+            jsonify(
+                message = 'Procedimento enviado no seu Telegram',
+                statusCode = 200
             )
-        else:
-            return make_response(
-                jsonify(
-                    message = 'Código não cadastrado',
-                    statusCode = 500
-                )
-            )
+        )
     else:
         return make_response(
             jsonify(
-                message = 'Usuário já foi liberado',
+                message = 'Matrícula não encontrada',
                 statusCode = 500
             )
         )
+    
+# Função para alterar senha de um usuário
+@app.route('/users/change-password', methods=['PUT'])
+def change_password(password=None, code=None):
+    if password and code:
+        password = hashlib.sha256((password).encode('utf-8')).hexdigest()
+        values = (password, code)
+    else:
+        user = request.json
+        user['password'] = hashlib.sha256((user['password']).encode('utf-8')).hexdigest()
+        values = (user['password'], user['code'])
+        
+    query = "UPDATE users SET password = %s WHERE code = %s"
+    execute_query(query, values)
+    mydb.commit()
+    if password and code:
+        return(True)
+    else:
+        return make_response(
+            jsonify(
+                message = "Senha alterada", statusCode = 200
+            )
+        )
+    
 
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
@@ -466,18 +445,8 @@ def count_parts():
     )
     
 
-'''def get_access(reply, code):
-    mycursor = mydb.cursor()
-    if reply == 'Y':
-        query = "UPDATE users SET permission = 'Inspetor' WHERE code = %s"
-        values = [code]
-        mycursor.execute(query, values)
-        mydb.commit()
-    else:
-        pass'''
 
-
-
+# Inicia as duas API em threads distintas
 if __name__ == '__main__':
     flask_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000})
     flask_thread.start()
