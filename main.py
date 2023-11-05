@@ -406,7 +406,6 @@ def change_password(password=None, code=None):
         user = request.json
         user['password'] = hashlib.sha256((user['password']).encode('utf-8')).hexdigest()
         values = (user['password'], user['code'])
-        
     query = "UPDATE users SET password = %s WHERE code = %s"
     execute_query(query, values)
     mydb.commit()
@@ -419,7 +418,6 @@ def change_password(password=None, code=None):
             )
         )
     
-
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
 def count_parts():
