@@ -18,19 +18,30 @@ db_config = {
     'database': 'bdteste',
 }
 
+import mysql.connector
+
 def execute_query(query, values=None):
-    mydb = mysql.connector.connect(**db_config)
-    mycursor = mydb.cursor()
-    if values:
-        mycursor.execute(query, values)
-    else:
-        mycursor.execute(query)
-    if query[:6] in ("UPDATE", "INSERT"):
-        mydb.commit()
-    result = mycursor.fetchall()
-    mydb.close()
+    mydb = None
+    result = None
+    try:
+        mydb = mysql.connector.connect(**db_config)
+        mycursor = mydb.cursor()
+        if values:
+            mycursor.execute(query, values)
+        else:
+            mycursor.execute(query)
+        if query.startswith(("INSERT", "UPDATE", "DELETE")):
+            mydb.commit()
+        else:
+            result = mycursor.fetchall()
+    except mysql.connector.Error as err:
+        print("Erro na consulta ou conexão com o banco de dados:", err)
+    finally:
+        if mydb:
+            mydb.close()
     return result
-    
+
+
 def serialize_user(user):
     return {
         'code': user[0],
@@ -38,12 +49,22 @@ def serialize_user(user):
         'permission': user[3]
     }
 
-# Rota para listar usuários
+
 @app.route('/users', methods=['GET'])
-def get_users():
+def get_user_or_users():
+    code = request.args.get('code')
     query = "SELECT * FROM users"
-    users_db = execute_query(query)
-    list_users = [serialize_user(user) for user in users_db]
+    if code:
+        query += " WHERE code = %s"
+        values = [code]
+    else:
+        values = None
+
+    users_db = execute_query(query, values)
+    if code:
+        list_users = [serialize_user(users_db[0])] if users_db else {}
+    else:
+        list_users = [serialize_user(user) for user in users_db]
     return make_response(
         jsonify(
             info=list_users,
@@ -51,60 +72,61 @@ def get_users():
         )
     )
 
-# Rota para listar um usuário
-@app.route('/user/', methods=['GET'])
-def get_one_user():
-    code = request.args.get('code')
-    query = "SELECT * FROM users WHERE code = %s"
-    values = [code]
-    user_db = execute_query(query, values)
-    list_user = serialize_user(user_db[0]) if user_db else {}
-    return make_response(
-        jsonify(
-            info=list_user,
-            statusCode=200
-        )
-    )
-
 # Rota para listar peças
-@app.route('/parts/', methods=['GET'])
-def get_parts():
-    role = request.args.get('role')
-    if role == "Inspetor":
-        query = "SELECT * FROM parts WHERE validation is null and inspector is null"
+@app.route('/parts', methods=['GET'])
+def get_parts_or_part():
+    serial_number = request.args.get('serial_number')
+    if serial_number:
+        query = (
+            "SELECT * FROM parts p, model_parts m LEFT JOIN users u ON p.inspector = u.code "
+            "WHERE p.model_prefix = m.prefix AND serial_number = %s"
+        )
+        values = [serial_number[2:5]]
     else:
-        query = "SELECT * FROM parts WHERE validation is null and inspector is not null"
-    parts_db = execute_query(query)
-    list_parts = list()
-    for part in parts_db:
-        query = "SELECT model FROM model_parts WHERE prefix = %s"
-        values = [part[1],]
-        model = execute_query(query, values)
-        serial_number = part[1] + str(part[0])
-        data_hora = str(part[3])
-        if part[5] is not None:
-            query = "SELECT name FROM users WHERE code = %s"
-            values = [part[5],]
-            inspector = execute_query(query, values)
-            list_parts.append(
-                {
-                    'serial_number': serial_number,
-                    'model': model,
-                    'status': part[2],
-                    'datetime_verif': data_hora,
-                    'inspector': inspector
-                }
+        role = request.args.get('role')
+        if role == "Inspetor":
+            query = (
+                "SELECT p.*, m.model, u.name AS inspector_name "
+                "FROM parts p, model_parts m LEFT JOIN users u ON p.inspector = u.code "
+                "WHERE p.validation IS NULL AND p.inspector IS NULL"
             )
         else:
-            list_parts.append(
-                {
-                    'serial_number': serial_number,
-                    'model': model,
-                    'status': part[2],
-                    'datetime_verif': data_hora,
-                    'inspector': None
-                }
+            query = (
+                "SELECT p.*, m.model, u.name AS inspector_name "
+                "FROM parts p, model_parts m LEFT JOIN users u ON p.inspector = u.code "
+                "WHERE p.validation IS NULL AND p.inspector IS NOT NULL"
             )
+    parts_db = execute_query(query, values)
+    if serial_number:
+        list_parts = []
+        for part in parts_db:
+            serial_number = part[1] + str(part[0])
+            data_hora = str(part[3])
+            part_info = {
+                'serie': serial_number,
+                'model': part[10],
+                'situation': part[2],
+                'date': data_hora,
+                'codeInspector': part[5],
+                'codeSupervisor': part[6],
+                'finalCheck': part[7],
+                'inspector': part[12] if part[5] is not None else None,
+                'supervisor': None
+            }
+            list_parts.append(part_info)
+    else:
+        list_parts = []
+        for part in parts_db:
+            serial_number = part[1] + str(part[0])
+            data_hora = str(part[3])
+            part_info = {
+                'serial_number': serial_number,
+                'model': part[10],
+                'status': part[2],
+                'datetime_verif': data_hora,
+                'inspector': part[12] if part[5] is not None else None
+            }
+            list_parts.append(part_info)
 
     return make_response(
         jsonify(
@@ -113,73 +135,12 @@ def get_parts():
         )
     )
 
-# Rota para listar uma peça
-@app.route('/part/', methods=['GET'])
-def get_one_part():
-    serial_number = request.args.get('serial_number')
-    query = "SELECT * FROM parts p, model_parts m WHERE p.model_prefix = m.prefix and serial_number = %s"
-    values = [serial_number[2:5],]
-    part_db = execute_query(query, values)
-    if part_db[0][5] is not None:
-        query = "SELECT * FROM parts p, model_parts m, users u WHERE p.model_prefix = m.prefix AND serial_number = %s AND u.code = %s"
-        values = [serial_number[2:], part_db[0][5]]
-        part_db = execute_query(query, values)
-        for part in part_db:
-            serial_number = part[1] + str(part[0])
-            data_hora = str(part[3])
-            list_part = {
-                    'serie': serial_number,
-                    'model': part[10],
-                    'situation': part[2],
-                    'date': data_hora,
-                    'codeInspector': part[5],
-                    'codeSupervisor': part[6],
-                    'finalCheck': part[7],
-                    'inspector': part[12],
-                    'supervisor': None
-                }
-        return make_response(
-            jsonify(
-                info=list_part,
-                statusCode=200
-            )
-        )
-    else:
-        for part in part_db:
-            serial_number = part[1] + str(part[0])
-            data_hora = str(part[3])
-            list_part = {
-                    'serie': serial_number,
-                    'model': part[10],
-                    'situation': part[2],
-                    'date': data_hora,
-                    'codeInspector': part[5],
-                    'codeSupervisor': part[6],
-                    'finalCheck': part[7],
-                    'inspector': None,
-                    'supervisor': None
-                }
-        return make_response(
-            jsonify(
-                info=list_part,
-                statusCode=200
-            )
-        )
-
 # Rota para listar modelos de peças
 @app.route('/model-parts', methods=['GET'])
 def get_models():
-    query = "SELECT * FROM model_parts"
+    query = "SELECT prefix, model FROM model_parts"
     models_db = execute_query(query)
-    list_models = list()
-    for model in models_db:
-        list_models.append(
-            {
-                'prefix': model[0],
-                'model': model[1]
-            }
-        )
-
+    list_models = [{"prefix": prefix, "model": model} for prefix, model in models_db]
     return make_response(
         jsonify(
             info=list_models,
@@ -191,19 +152,10 @@ def get_models():
 @app.route('/model/save', methods=['POST'])
 def save_model():
     model = request.json
-    query = 'SELECT * FROM model_parts WHERE prefix = %s OR model = %s'
-    values = [model['prefix'], model['model']]
-    model_db = execute_query(query, values)
-    if len(model_db) == 1:
-        return make_response(
-            jsonify(
-                message='Prefixo ou modelo já cadastrado',
-                statusCode=500
-            )
-        )
-    else:
-        query = 'INSERT INTO model_parts(prefix, model) VALUES(upper(%s), upper(%s))'
-        values = [model['prefix'], model['model']]
+    prefix, model_name = model['prefix'], model['model']
+    query = 'INSERT INTO model_parts (prefix, model) VALUES (upper(%s), upper(%s))'
+    values = (prefix, model_name)
+    try:
         execute_query(query, values)
         return make_response(
             jsonify(
@@ -211,13 +163,21 @@ def save_model():
                 statusCode=200
             )
         )
+    except:
+        return make_response(
+            jsonify(
+                message='Prefixo ou modelo já cadastrado',
+                statusCode=500
+            )
+        )
+
 
 # Rota para deletar um modelo de peça
 @app.route('/delete-model/', methods=['DELETE'])
 def delete_model():
     prefix = request.args.get('prefix')
     query = 'DELETE FROM model_parts WHERE prefix = %s'
-    values = [prefix,]
+    values = [prefix]
     execute_query(query, values)
     return make_response(
         jsonify(
@@ -230,10 +190,10 @@ def delete_model():
 @app.route('/check-code/', methods=['GET'])
 def check_code():
     prefix = request.args.get('code')
-    query = 'SELECT * FROM model_parts WHERE prefix = %s'
+    query = 'SELECT COUNT(*) FROM model_parts WHERE prefix = %s'
     values = [prefix[0:2],]
-    model_db = execute_query(query, values)
-    if len(model_db) == 1:
+    count = execute_query(query, values)
+    if count == 1:
         return make_response(
             jsonify(
                 message="Prefixo validado",
@@ -259,72 +219,65 @@ def check_code():
 @app.route('/parts/validate', methods=['PUT'])
 def validate_part():
     part = request.json
+    query_values = None
+    message = None
     if part['codeSupervisor'] is None:
         query = "UPDATE parts SET datetime_inspec = NOW(), status = %s, inspector = %s WHERE serial_number = %s"
-        values = (part['situation'], part['codeInspector'], part['serie'][2:])
-        execute_query(query, values)
-        if part['situation'] == 'N':
-            TG.send_denied_inspec(part['codeInspector'], part['inspector'], part['serie'])
-        return make_response(
-            jsonify(
-                message="Inspeção registrada",
-                statusCode=200
-            )
-        )
+        query_values = (part['situation'], part['codeInspector'], part['serie'][2:])
+        message = "Inspeção registrada"
     else:
         query = "UPDATE parts SET datetime_valid = NOW(), validation = %s, supervisor = %s WHERE serial_number = %s"
-        values = (part['finalCheck'], part['codeSupervisor'], part['serie'][2:])
-        execute_query(query, values)
-        return make_response(
-            jsonify(
-                message="Supervisão registrada",
-                statusCode=200
-            )
+        query_values = (part['finalCheck'], part['codeSupervisor'], part['serie'][2:])
+        message = "Supervisão registrada"
+    execute_query(query, query_values)
+    if part['situation'] == 'N' and part['codeSupervisor'] is None:
+        TG.send_denied_inspection(part['codeInspector'], part['inspector'], part['serie'])
+    return make_response(
+        jsonify(
+            message=message,
+            statusCode=200
         )
+    )
 
 # Rota para validar o login de um usuário
 @app.route('/users/login', methods=['PUT'])
 def verify_login():
-    user_db = None
     user = request.json
     query = "SELECT * FROM users WHERE code = %s"
     values = (user['code'],)
     user_db = execute_query(query, values)
-    if user_db:
-        if user_db[0][3] == "Supervisor" or user_db[0][3] == "Inspetor":
-            if user_db[0][2] == hashlib.sha256((user['password']).encode('utf-8')).hexdigest():
-                user_json = {
-                    "code": user_db[0][0],
-                    "name": user_db[0][1],
-                    "role": user_db[0][3]
-                }
-                return make_response(
-                    jsonify(
-                        info=user_json,
-                        statusCode=200
-                    )
-                )
-            else:
-                return make_response(
-                    jsonify(
-                        message='Senha incorreta.',
-                        statusCode=400
-                    )
-                )
-        else:
-            return make_response(
-                jsonify(
-                    message='Acesso ainda não liberado.',
-                    statusCode=400
-                )
-            )
-    else:
+    if not user_db:
         return make_response(
             jsonify(
                 message='Usuário incorreto.',
                 statusCode=400
             )
         )
+    if user_db[0][3] not in ("Supervisor", "Inspetor"):
+        return make_response(
+            jsonify(
+                message='Acesso ainda não liberado.',
+                statusCode=400
+            )
+        )
+    if user_db[0][2] != hashlib.sha256((user['password']).encode('utf-8')).hexdigest():
+        return make_response(
+            jsonify(
+                message='Senha incorreta.',
+                statusCode=400
+            )
+        )
+    user_json = {
+        "code": user_db[0][0],
+        "name": user_db[0][1],
+        "role": user_db[0][3]
+    }
+    return make_response(
+        jsonify(
+            info=user_json,
+            statusCode=200
+        )
+    )
 
 # Rota para verificar o código de um usuário
 @app.route('/users/verify-user-code', methods=['GET'])
@@ -371,26 +324,22 @@ def alter_permission():
 # Rota para alterar a senha de um usuário (envia mensagem pelo bot)
 @app.route('/users/forgot-password/', methods=['GET'])
 def send_message_password():
-    user = request.args.get('code')
-    query = "SELECT * FROM users WHERE code = %s"
-    values = [user]
-    user_db = execute_query(query, values)
+    user_code = request.args.get('code')
+    user_db = execute_query("SELECT * FROM users WHERE code = %s", [user_code])
     if user_db:
-        TG.send_password_message(user_db[0][4], user)
-        return make_response(
-            jsonify(
-                message = 'Procedimento enviado no seu Telegram',
-                statusCode = 200
-            )
-        )
+        TG.send_password_message(user_db[0][4], user_code)
+        message = 'Procedimento enviado no seu Telegram'
+        status_code = 200
     else:
-        return make_response(
-            jsonify(
-                message = 'Matrícula não encontrada',
-                statusCode = 500
-            )
+        message = 'Matrícula não encontrada'
+        status_code = 500
+    return make_response(
+        jsonify(
+            message=message,
+            statusCode=status_code
         )
-    
+    )
+
 # Função para alterar senha de um usuário
 @app.route('/users/change-password', methods=['PUT'])
 def change_password(password=None, code=None):
@@ -403,43 +352,36 @@ def change_password(password=None, code=None):
         values = (user['password'], user['code'])
     query = "UPDATE users SET password = %s WHERE code = %s"
     execute_query(query, values)
-    if password and code:
-        return(True)
-    else:
+    if not (password and code):
         return make_response(
             jsonify(
-                message = "Senha alterada", statusCode = 200
+                message="Senha alterada",
+                statusCode=200
             )
         )
     
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
 def count_parts():
-    query_prefixes = "SELECT prefix FROM model_parts"
-    prefixes = [result[0] for result in execute_query(query_prefixes)]
-
-    results = {}
-    for prefix in prefixes:
-        query_aprovado = "SELECT COUNT(*) FROM parts WHERE model_prefix = %s AND validation = 'S'"
-        query_reprovado = "SELECT COUNT(*) FROM parts WHERE model_prefix = %s AND validation = 'N'"
-        
-        aprovados = execute_query(query_aprovado, (prefix,))
-        reprovados = execute_query(query_reprovado, (prefix,))
-        
-        results[prefix] = {
+    query = """
+        SELECT m.prefix,
+               SUM(p.validation = 'S') AS aprovados,
+               SUM(p.validation = 'N') AS reprovados
+          FROM model_parts m
+               LEFT JOIN parts p ON m.prefix = p.model_prefix
+      GROUP BY m.prefix
+    """
+    results = execute_query(query)
+    response = [
+        {
             "prefixo": prefix,
-            "aprovados": aprovados[0][0],
-            "reprovados": reprovados[0][0]
+            "aprovados": aprovados,
+            "reprovados": reprovados
         }
+        for prefix, aprovados, reprovados in results
+    ]
+    return jsonify(results=response, statusCode=200)
 
-    return make_response(
-        jsonify(results=results, statusCode=200)
-    )
-    
-# Inicia as duas API em threads distintas
 if __name__ == '__main__':
-    flask_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000})
-    flask_thread.start()
-
-    telegram_thread = threading.Thread(target=TG.run_telegram_bot)
-    telegram_thread.start()
+    threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000}).start()
+    threading.Thread(target=TG.run_telegram_bot).start()
