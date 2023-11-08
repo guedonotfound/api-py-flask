@@ -10,7 +10,7 @@ link = "https://t.me/rogetiobot"
 bot = telebot.TeleBot(CHAVE_API)
 
 user_requests = {}
-chat_sup_id = -4031347674
+chat_sup_id = -1002056135520
 chat_ins_id = -4007534836
 chat_user_id = None
 
@@ -71,7 +71,7 @@ def handle_fui_eu(message):
     keyboard.add(button3)
     password = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
     main.change_password(password, code)
-    text = "Sua senha foi alterada para: " + password
+    text = "Sua senha foi alterada para: ```" + password + "```"
     msg = bot.send_message(message.chat.id, text, reply_markup=keyboard)
     original_message_id = user_requests.get(user_id, {}).get("message_id")
     if original_message_id:

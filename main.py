@@ -20,16 +20,21 @@ db_config = {
     'database': 'bdteste',
 }
 
-mydb = mysql.connector.connect(**db_config)
+# mydb = mysql.connector.connect(**db_config)
 
 def execute_query(query, values=None):
+    mydb = mysql.connector.connect(**db_config)
     mycursor = mydb.cursor()
     if values:
         mycursor.execute(query, values)
     else:
         mycursor.execute(query)
-    return mycursor.fetchall()
-
+    if query[:6] == 'UPDATE' or query[:6] == 'INSERT':
+        mydb.commit()
+    result = mycursor.fetchall()
+    mydb.close()
+    return result
+    
 def serialize_user(user):
     return {
         'code': user[0],
@@ -204,7 +209,7 @@ def save_model():
         query = 'INSERT INTO model_parts(prefix, model) VALUES(upper(%s), upper(%s))'
         values = [model['prefix'], model['model']]
         execute_query(query, values)
-        mydb.commit()
+        # mydb.commit()
         return make_response(
             jsonify(
                 message='Modelo cadastrado com sucesso',
@@ -219,7 +224,7 @@ def delete_model():
     query = 'DELETE FROM model_parts WHERE prefix = %s'
     values = [prefix,]
     execute_query(query, values)
-    mydb.commit()
+    # mydb.commit()
     return make_response(
         jsonify(
             message='Modelo deletado com sucesso',
@@ -264,7 +269,7 @@ def validate_part():
         query = "UPDATE parts SET datetime_inspec = NOW(), status = %s, inspector = %s WHERE serial_number = %s"
         values = (part['situation'], part['codeInspector'], part['serie'][2:])
         execute_query(query, values)
-        mydb.commit()
+        # mydb.commit()
         if part['situation'] == 'N':
             TG.send_denied_inspec(part['codeInspector'], part['inspector'], part['serie'])
         return make_response(
@@ -277,7 +282,7 @@ def validate_part():
         query = "UPDATE parts SET datetime_valid = NOW(), validation = %s, supervisor = %s WHERE serial_number = %s"
         values = (part['finalCheck'], part['codeSupervisor'], part['serie'][2:])
         execute_query(query, values)
-        mydb.commit()
+        # mydb.commit()
         return make_response(
             jsonify(
                 message="Supervisão registrada",
@@ -286,17 +291,20 @@ def validate_part():
         )
 
 # Rota para validar o login de um usuário
-@app.route('/users/login', methods=['POST'])
+@app.route('/users/login', methods=['PUT'])
 def verify_login():
+    user_db = None
     user = request.json
     query = "SELECT * FROM users WHERE code = %s"
     values = (user['code'],)
     user_db = execute_query(query, values)
-    if len(user_db) != 0:
+    if user_db:
         if user_db[0][3] == "Supervisor" or user_db[0][3] == "Inspetor":
             print(user['password'])
             print(hashlib.sha256((user['password']).encode('utf-8')).hexdigest())
+            print(user_db[0][2])
             if user_db[0][2] == hashlib.sha256((user['password']).encode('utf-8')).hexdigest():
+                print("FOIIIIIIIIIIIIIIIIII")
                 user_json = {
                     "code": user_db[0][0],
                     "name": user_db[0][1],
@@ -365,7 +373,7 @@ def alter_permission():
     query = "UPDATE users SET permission = %s WHERE code = %s"
     values = (user['permission'], user['code'])
     execute_query(query, values)
-    mydb.commit()
+    # mydb.commit()
     return make_response(
         jsonify(
             message='Permissão alterada',
@@ -408,7 +416,7 @@ def change_password(password=None, code=None):
         values = (user['password'], user['code'])
     query = "UPDATE users SET password = %s WHERE code = %s"
     execute_query(query, values)
-    mydb.commit()
+    # mydb.commit()
     if password and code:
         return(True)
     else:
