@@ -8,8 +8,6 @@ import TelegramAPI as TG
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type"])
-flask_initialized = False
-telegram_bot_initialized = False
 
 # Configurações de conexão com o banco de dados
 db_config = {
@@ -20,8 +18,6 @@ db_config = {
     'database': 'bdteste',
 }
 
-# mydb = mysql.connector.connect(**db_config)
-
 def execute_query(query, values=None):
     mydb = mysql.connector.connect(**db_config)
     mycursor = mydb.cursor()
@@ -29,7 +25,7 @@ def execute_query(query, values=None):
         mycursor.execute(query, values)
     else:
         mycursor.execute(query)
-    if query[:6] == 'UPDATE' or query[:6] == 'INSERT':
+    if query[:6] in ("UPDATE", "INSERT"):
         mydb.commit()
     result = mycursor.fetchall()
     mydb.close()
@@ -300,11 +296,7 @@ def verify_login():
     user_db = execute_query(query, values)
     if user_db:
         if user_db[0][3] == "Supervisor" or user_db[0][3] == "Inspetor":
-            print(user['password'])
-            print(hashlib.sha256((user['password']).encode('utf-8')).hexdigest())
-            print(user_db[0][2])
             if user_db[0][2] == hashlib.sha256((user['password']).encode('utf-8')).hexdigest():
-                print("FOIIIIIIIIIIIIIIIIII")
                 user_json = {
                     "code": user_db[0][0],
                     "name": user_db[0][1],
