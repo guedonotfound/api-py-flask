@@ -205,7 +205,6 @@ def save_model():
         query = 'INSERT INTO model_parts(prefix, model) VALUES(upper(%s), upper(%s))'
         values = [model['prefix'], model['model']]
         execute_query(query, values)
-        # mydb.commit()
         return make_response(
             jsonify(
                 message='Modelo cadastrado com sucesso',
@@ -220,7 +219,6 @@ def delete_model():
     query = 'DELETE FROM model_parts WHERE prefix = %s'
     values = [prefix,]
     execute_query(query, values)
-    # mydb.commit()
     return make_response(
         jsonify(
             message='Modelo deletado com sucesso',
@@ -265,7 +263,6 @@ def validate_part():
         query = "UPDATE parts SET datetime_inspec = NOW(), status = %s, inspector = %s WHERE serial_number = %s"
         values = (part['situation'], part['codeInspector'], part['serie'][2:])
         execute_query(query, values)
-        # mydb.commit()
         if part['situation'] == 'N':
             TG.send_denied_inspec(part['codeInspector'], part['inspector'], part['serie'])
         return make_response(
@@ -278,7 +275,6 @@ def validate_part():
         query = "UPDATE parts SET datetime_valid = NOW(), validation = %s, supervisor = %s WHERE serial_number = %s"
         values = (part['finalCheck'], part['codeSupervisor'], part['serie'][2:])
         execute_query(query, values)
-        # mydb.commit()
         return make_response(
             jsonify(
                 message="Supervisão registrada",
@@ -365,7 +361,6 @@ def alter_permission():
     query = "UPDATE users SET permission = %s WHERE code = %s"
     values = (user['permission'], user['code'])
     execute_query(query, values)
-    # mydb.commit()
     return make_response(
         jsonify(
             message='Permissão alterada',
@@ -408,7 +403,6 @@ def change_password(password=None, code=None):
         values = (user['password'], user['code'])
     query = "UPDATE users SET password = %s WHERE code = %s"
     execute_query(query, values)
-    # mydb.commit()
     if password and code:
         return(True)
     else:
@@ -442,8 +436,6 @@ def count_parts():
         jsonify(results=results, statusCode=200)
     )
     
-
-
 # Inicia as duas API em threads distintas
 if __name__ == '__main__':
     flask_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000})
