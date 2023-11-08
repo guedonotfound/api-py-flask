@@ -14,6 +14,11 @@ chat_sup_id = -1002056135520
 chat_ins_id = -4007534836
 chat_user_id = None
 
+'''@bot.message_handler()
+def responder(message):
+    msg = message.chat.id
+    print(msg)'''
+
 @bot.message_handler(commands=["Supervisao_realizada"])
 def part_verified(message):
     original_message_id = user_requests.get(chat_sup_id, {}).get("message_id")
@@ -47,11 +52,6 @@ def send_denied_verify(part):
              /Inspecao_realizada - Peça já verificada""")
     msg = bot.send_message(chat_ins_id, text)
     user_requests[chat_ins_id] = {"message_id": msg.message_id, "serial_num" : part}
-
-'''@bot.message_handler()
-def responder(message):
-    msg = message.chat.id
-    print(msg)'''
 
 def send_password_message(chat_id, code):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
