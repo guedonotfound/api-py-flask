@@ -62,7 +62,7 @@ def get_user_or_users():
 
     users_db = execute_query(query, values)
     if code:
-        list_users = [serialize_user(users_db[0])] if users_db else {}
+        list_users = serialize_user(users_db[0]) if users_db else {}
     else:
         list_users = [serialize_user(user) for user in users_db]
     return make_response(
@@ -76,33 +76,39 @@ def get_user_or_users():
 @app.route('/parts', methods=['GET'])
 def get_parts_or_part():
     serial_number = request.args.get('serial_number')
+    role = request.args.get('role')
     if serial_number:
         query = (
-            "SELECT * FROM parts p, model_parts m LEFT JOIN users u ON p.inspector = u.code "
-            "WHERE p.model_prefix = m.prefix AND serial_number = %s"
+            "SELECT * FROM parts p "
+            "JOIN model_parts m ON p.model_prefix = m.prefix "
+            "LEFT JOIN users u ON p.inspector = u.code "
+            "WHERE p.model_prefix = m.prefix AND p.serial_number = %s;"
         )
         values = [serial_number[2:5]]
     else:
-        role = request.args.get('role')
+        values = None
         if role == "Inspetor":
             query = (
                 "SELECT p.*, m.model, u.name AS inspector_name "
-                "FROM parts p, model_parts m LEFT JOIN users u ON p.inspector = u.code "
-                "WHERE p.validation IS NULL AND p.inspector IS NULL"
+                "FROM parts p "
+                "JOIN model_parts m ON p.model_prefix = m.prefix "
+                "LEFT JOIN users u ON p.inspector = u.code "
+                "WHERE p.validation IS NULL AND p.inspector IS NULL;"
             )
         else:
             query = (
                 "SELECT p.*, m.model, u.name AS inspector_name "
-                "FROM parts p, model_parts m LEFT JOIN users u ON p.inspector = u.code "
-                "WHERE p.validation IS NULL AND p.inspector IS NOT NULL"
+                "FROM parts p "
+                "JOIN model_parts m ON p.model_prefix = m.prefix "
+                "LEFT JOIN users u ON p.inspector = u.code "
+                "WHERE p.validation IS NULL AND p.inspector IS NOT NULL;"
             )
     parts_db = execute_query(query, values)
     if serial_number:
-        list_parts = []
         for part in parts_db:
             serial_number = part[1] + str(part[0])
             data_hora = str(part[3])
-            part_info = {
+            list_parts = {
                 'serie': serial_number,
                 'model': part[10],
                 'situation': part[2],
@@ -113,7 +119,6 @@ def get_parts_or_part():
                 'inspector': part[12] if part[5] is not None else None,
                 'supervisor': None
             }
-            list_parts.append(part_info)
     else:
         list_parts = []
         for part in parts_db:
@@ -124,7 +129,7 @@ def get_parts_or_part():
                 'model': part[10],
                 'status': part[2],
                 'datetime_verif': data_hora,
-                'inspector': part[12] if part[5] is not None else None
+                'inspector': part[10] if part[5] is not None else None
             }
             list_parts.append(part_info)
 
