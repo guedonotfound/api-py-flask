@@ -1,58 +1,7 @@
 ####todolist####
 
-criar UPDATE requests de teste no Postman
-verificar de novo se tá tudo rodando legal
-
-• BD:parts
-     num de série (PK)
-     modelo_prefixo
-     status
-     foto
-     inspetor
-     supervisor
-     data
-     validado
-          CREATE TABLE `bdteste`.`parts` (
-          `serial_number` INT NOT NULL,
-          `model_prefix` VARCHAR(2) NOT NULL,
-          `status` VARCHAR(10) NOT NULL,
-          `inspection` VARCHAR(10),
-          `img` BLOB NOT NULL,
-          `date` DATETIME NOT NULL,
-          `validation` VARCHAR(1) BINARY DEFAULT 'N',
-          `inspector` VARCHAR(45),
-          `supervisor` VARCHAR(45),
-          `inspection_date` DATETIME,
-          `validation_date` DATETIME,
-          PRIMARY KEY (`serial_number`),
-          UNIQUE INDEX `serial_number_UNIQUE` (`serial_number` ASC) VISIBLE);
-  
-          ALTER TABLE parts ADD CONSTRAINT id_model_prefix
-          FOREIGN KEY(model_prefix) REFERENCES model_parts (prefix);
-
-
-• BD:model_parts
-     prefixo (PK)
-     modelo
-          CREATE TABLE `bdteste`.`model_parts` (
-          `prefix` VARCHAR(2) NOT NULL,
-          `model` VARCHAR(15) NOT NULL,
-          PRIMARY KEY (`prefix`),
-          UNIQUE INDEX `prefix_UNIQUE` (`prefix` ASC) VISIBLE,
-          UNIQUE INDEX `model_UNIQUE` (`model` ASC) VISIBLE);
-
-• tela de controle de peças:
-GET: 
-     num de série
-     modelo
-     situação
-     foto
-POST: 
-     data
-     num de série
-     nome do inspetor
-     validado
-     supervisor
+criar requests de teste no postman a partir da função validade_part
+testar tudo e colocar os try exception necessários
 
 Gráficos e relatórios:
 peças aprovadas
