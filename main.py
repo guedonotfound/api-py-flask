@@ -1,6 +1,7 @@
-import mysql.connector
 from flask import Flask, make_response, jsonify, request
 from flask_cors import CORS
+import pymysql
+from pymysql import IntegrityError
 import hashlib
 import threading
 import TelegramAPI as TG
@@ -18,29 +19,24 @@ db_config = {
     'database': 'bdteste',
 }
 
-import mysql.connector
-
 def execute_query(query, values=None):
-    mydb = None
     result = None
     try:
-        mydb = mysql.connector.connect(**db_config)
-        mycursor = mydb.cursor()
-        if values:
-            mycursor.execute(query, values)
-        else:
-            mycursor.execute(query)
-        if query.startswith(("INSERT", "UPDATE", "DELETE")):
-            mydb.commit()
-        else:
-            result = mycursor.fetchall()
-    except mysql.connector.Error as err:
+        with pymysql.connect(**db_config) as mydb:
+            mycursor = mydb.cursor()
+            if values:
+                mycursor.execute(query, values)
+            else:
+                mycursor.execute(query)
+            if query.startswith(("INSERT", "UPDATE", "DELETE")):
+                mydb.commit()
+            else:
+                result = mycursor.fetchall()
+    except pymysql.IntegrityError as e:
+        raise e
+    except pymysql.Error as err:
         print("Erro na consulta ou conexão com o banco de dados: ", err)
-    finally:
-        if mydb:
-            mydb.close()
     return result
-
 
 def serialize_user(user):
     return {
@@ -49,7 +45,7 @@ def serialize_user(user):
         'permission': user[3]
     }
 
-
+# Rota para listar usuários
 @app.route('/users', methods=['GET'])
 def get_user_or_users():
     code = request.args.get('code')
@@ -76,7 +72,6 @@ def get_user_or_users():
 @app.route('/parts', methods=['GET'])
 def get_parts_or_part():
     serial_number = request.args.get('serial_number')
-    role = request.args.get('role')
     if serial_number:
         query = (
             "SELECT * FROM parts p "
@@ -86,6 +81,7 @@ def get_parts_or_part():
         )
         values = [serial_number[2:]]
     else:
+        role = request.args.get('role')
         values = None
         if role == "Inspetor":
             query = (
@@ -93,7 +89,7 @@ def get_parts_or_part():
                 "FROM parts p "
                 "JOIN model_parts m ON p.model_prefix = m.prefix "
                 "LEFT JOIN users u ON p.inspector = u.code "
-                "WHERE p.validation IS NULL AND p.inspector IS NULL;"
+                "WHERE p.inspector IS NULL;"
             )
         else:
             query = (
@@ -157,24 +153,26 @@ def get_models():
 @app.route('/model/save', methods=['POST'])
 def save_model():
     model = request.json
-    prefix, model_name = model['prefix'], model['model']
     query = 'INSERT INTO model_parts (prefix, model) VALUES (upper(%s), upper(%s))'
-    values = (prefix, model_name)
+    values = (model['prefix'], model['model'])
+    
     try:
         execute_query(query, values)
-        return make_response(
-            jsonify(
-                message='Modelo cadastrado com sucesso',
-                statusCode=200
-            )
+        message = 'Modelo cadastrado com sucesso'
+        status_code = 200
+    except IntegrityError as e:
+        message = 'Prefixo ou modelo já cadastrado'
+        status_code = 500
+    except Exception as e:
+        message = f'Erro na consulta ou conexão com o banco de dados: {str(e)}'
+        status_code = 500
+
+    return make_response(
+        jsonify(
+            message=message,
+            statusCode=status_code
         )
-    except:
-        return make_response(
-            jsonify(
-                message='Prefixo ou modelo já cadastrado',
-                statusCode=500
-            )
-        )
+    )
 
 
 # Rota para deletar um modelo de peça
@@ -183,22 +181,30 @@ def delete_model():
     prefix = request.args.get('prefix')
     query = 'DELETE FROM model_parts WHERE prefix = %s'
     values = [prefix]
-    execute_query(query, values)
+    try:
+        execute_query(query, values)
+        message='Modelo deletado com sucesso'
+        status_code=200
+    except Exception as e:
+        message=f'Erro na consulta ou conexão com o banco de dados: {str(e)}'
+        status_code = 500
+    
     return make_response(
         jsonify(
-            message='Modelo deletado com sucesso',
-            statusCode=200
+            message=message,
+            statusCode=status_code
         )
     )
+
 
 # Rota para verificar um código de modelo
 @app.route('/check-code/', methods=['GET'])
 def check_code():
     prefix = request.args.get('code')
-    query = 'SELECT COUNT(*) FROM model_parts WHERE prefix = %s'
+    query = 'SELECT * FROM model_parts WHERE prefix = %s'
     values = [prefix[:2],]
-    count = execute_query(query, values)
-    if count == 1:
+    data = execute_query(query, values)
+    if data:
         return make_response(
             jsonify(
                 message="Prefixo validado",
@@ -224,10 +230,7 @@ def check_code():
 @app.route('/update-status', methods=['POST'])
 def insert_new_part():
     part = request.json
-    query = "SELECT * FROM parts WHERE serial_number = %s"
-    values = (part['codigo_de_barras'][2:])
-    check_repetition = execute_query(query, values)
-    if check_repetition:
+    try:
         status = 'S' if part['status'] == 0 else ('N' if part['status'] == 1 else 'E')
         query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (%s, %s, %s, NOW())"
         values = (part['codigo_de_barras'][2:], part['codigo_de_barras'][:2], status)
@@ -238,7 +241,7 @@ def insert_new_part():
                 statusCode = 200
             )
         )
-    else:
+    except:
         return make_response(
             jsonify(
                 message = 'Peça repetida',
