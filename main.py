@@ -13,8 +13,8 @@ CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type"])
 db_config = {
     'host': '127.0.0.1',
     'port': 3306,
-    'user': 'root',
-    'password': 'root',
+    'user': 'Guedes',
+    'password': 'Guedes182!*@',
     'database': 'bdteste',
 }
 
@@ -35,7 +35,7 @@ def execute_query(query, values=None):
         else:
             result = mycursor.fetchall()
     except mysql.connector.Error as err:
-        print("Erro na consulta ou conexão com o banco de dados:", err)
+        print("Erro na consulta ou conexão com o banco de dados: ", err)
     finally:
         if mydb:
             mydb.close()
@@ -84,7 +84,7 @@ def get_parts_or_part():
             "LEFT JOIN users u ON p.inspector = u.code "
             "WHERE p.model_prefix = m.prefix AND p.serial_number = %s;"
         )
-        values = [serial_number[2:5]]
+        values = [serial_number[2:]]
     else:
         values = None
         if role == "Inspetor":
@@ -106,11 +106,11 @@ def get_parts_or_part():
     parts_db = execute_query(query, values)
     if serial_number:
         for part in parts_db:
-            serial_number = part[1] + str(part[0])
+            serial_number = part[1] + part[0]
             data_hora = str(part[3])
             list_parts = {
                 'serie': serial_number,
-                'model': part[10],
+                'model': part[9],
                 'situation': part[2],
                 'date': data_hora,
                 'codeInspector': part[5],
@@ -126,7 +126,7 @@ def get_parts_or_part():
             data_hora = str(part[3])
             part_info = {
                 'serial_number': serial_number,
-                'model': part[10],
+                'model': part[9],
                 'status': part[2],
                 'datetime_verif': data_hora,
                 'inspector': part[10] if part[5] is not None else None
@@ -196,7 +196,7 @@ def delete_model():
 def check_code():
     prefix = request.args.get('code')
     query = 'SELECT COUNT(*) FROM model_parts WHERE prefix = %s'
-    values = [prefix[0:2],]
+    values = [prefix[:2],]
     count = execute_query(query, values)
     if count == 1:
         return make_response(
@@ -220,23 +220,50 @@ def check_code():
             )
         )
 
+# Rota para inserir uma nova peça da esteira
+@app.route('/update-status', methods=['POST'])
+def insert_new_part():
+    part = request.json
+    query = "SELECT * FROM parts WHERE serial_number = %s"
+    values = (part['codigo_de_barras'][2:])
+    check_repetition = execute_query(query, values)
+    if check_repetition:
+        status = 'S' if part['status'] == 0 else ('N' if part['status'] == 1 else 'E')
+        query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (%s, %s, %s, NOW())"
+        values = (part['codigo_de_barras'][2:], part['codigo_de_barras'][:2], status)
+        execute_query(query, values)
+        return make_response(
+            jsonify(
+                message = "Peça cadastrada",
+                statusCode = 200
+            )
+        )
+    else:
+        return make_response(
+            jsonify(
+                message = 'Peça repetida',
+                statusCode = 500
+            )
+        )
+
+
 # Rota para validar uma peça
 @app.route('/parts/validate', methods=['PUT'])
 def validate_part():
     part = request.json
-    query_values = None
+    values = None
     message = None
     if part['codeSupervisor'] is None:
         query = "UPDATE parts SET datetime_inspec = NOW(), status = %s, inspector = %s WHERE serial_number = %s"
-        query_values = (part['situation'], part['codeInspector'], part['serie'][2:])
+        values = (part['situation'], part['codeInspector'], part['serie'][2:])
         message = "Inspeção registrada"
     else:
         query = "UPDATE parts SET datetime_valid = NOW(), validation = %s, supervisor = %s WHERE serial_number = %s"
-        query_values = (part['finalCheck'], part['codeSupervisor'], part['serie'][2:])
+        values = (part['finalCheck'], part['codeSupervisor'], part['serie'][2:])
         message = "Supervisão registrada"
-    execute_query(query, query_values)
+    execute_query(query, values)
     if part['situation'] == 'N' and part['codeSupervisor'] is None:
-        TG.send_denied_inspection(part['codeInspector'], part['inspector'], part['serie'])
+        TG.send_denied_inspec(part['codeInspector'], part['inspector'], part['serie'])
     return make_response(
         jsonify(
             message=message,
@@ -368,15 +395,21 @@ def change_password(password=None, code=None):
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
 def count_parts():
+    values = None
+    initial_date = request.args.get('initialDate')
+    final_date = request.args.get('finalDate')
     query = """
         SELECT m.prefix,
                SUM(p.validation = 'S') AS aprovados,
                SUM(p.validation = 'N') AS reprovados
           FROM model_parts m
                LEFT JOIN parts p ON m.prefix = p.model_prefix
-      GROUP BY m.prefix
     """
-    results = execute_query(query)
+    if initial_date and final_date:
+        values = (initial_date, final_date)
+        query += " WHERE datetime_valid BETWEEN %s AND %s"
+    query += " GROUP BY m.prefix"
+    results = execute_query(query, values)
     response = [
         {
             "prefixo": prefix,
@@ -385,7 +418,7 @@ def count_parts():
         }
         for prefix, aprovados, reprovados in results
     ]
-    return jsonify(results=response, statusCode=200)
+    return jsonify(results = response, statusCode=200)
 
 if __name__ == '__main__':
     threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000}).start()
