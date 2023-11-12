@@ -232,7 +232,7 @@ def insert_new_part():
     part = request.json
     try:
         status = 'S' if part['status'] == 0 else ('N' if part['status'] == 1 else 'E')
-        query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (%s, %s, %s, NOW())"
+        query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (upper(%s), upper(%s), upper(%s), NOW())"
         values = (part['codigo_de_barras'][2:], part['codigo_de_barras'][:2], status)
         execute_query(query, values)
         return make_response(
@@ -248,7 +248,6 @@ def insert_new_part():
                 statusCode = 500
             )
         )
-
 
 # Rota para validar uma peça
 @app.route('/parts/validate', methods=['PUT'])
@@ -402,26 +401,62 @@ def count_parts():
     initial_date = request.args.get('initialDate')
     final_date = request.args.get('finalDate')
     query = """
-        SELECT m.prefix,
-               SUM(p.validation = 'S') AS aprovados,
-               SUM(p.validation = 'N') AS reprovados
-          FROM model_parts m
-               LEFT JOIN parts p ON m.prefix = p.model_prefix
+        SELECT 
+            m.prefix,
+            SUM(p.validation = 'S') AS aprovados,
+            SUM(p.validation = 'N') AS reprovados
+        FROM model_parts m
+        LEFT JOIN parts p ON m.prefix = p.model_prefix
     """
     if initial_date and final_date:
-        values = (initial_date, final_date)
-        query += " WHERE datetime_valid BETWEEN %s AND %s"
-    query += " GROUP BY m.prefix"
-    results = execute_query(query, values)
-    response = [
-        {
-            "prefixo": prefix,
-            "aprovados": aprovados,
-            "reprovados": reprovados
-        }
-        for prefix, aprovados, reprovados in results
-    ]
-    return jsonify(results = response, statusCode=200)
+        values = (initial_date + " 00:00:00", final_date + " 23:59:59")
+        query += " WHERE datetime_valid >= %s AND datetime_valid <= %s"
+    query += " GROUP BY m.prefix WITH ROLLUP"
+    query_misplaced_parts = "SELECT COUNT(*) FROM misplaced_parts"
+    misplaced_parts = execute_query(query_misplaced_parts)
+    try:
+        results = execute_query(query, values)
+        if not results:
+            return make_response(
+                jsonify(
+                    message="Nenhuma peça no período informado",
+                    statusCode=404
+                )
+            )
+        else:
+            response = {
+                "column": [
+                    {
+                        "prefixo": prefix,
+                        "aprovados": aprovados,
+                        "reprovados": reprovados
+                    }
+                    for prefix, aprovados, reprovados in results
+                    if prefix is not None
+                ],
+                "pizza": [
+                    {
+                        "aprovados": results[-1][1] if results and results[-1][1] is not None else 0,
+                        "reprovados": results[-1][2] if results and results[-1][2] is not None else 0,
+                        "extraviados": str(misplaced_parts[0][0]) if misplaced_parts else 0
+                    }
+                ]
+            }
+            return make_response(
+                jsonify(
+                    info=response,
+                    statusCode=200
+                )
+            )
+
+    except Exception as e:
+        return make_response(
+            jsonify(
+                error=str(e),
+                statusCode=500
+            )
+        )
+
 
 if __name__ == '__main__':
     threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000}).start()
