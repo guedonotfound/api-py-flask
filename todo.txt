@@ -3,6 +3,8 @@
 criar requests de teste no postman a partir da função validade_part
 testar tudo e colocar os try exception necessários
 
+criar função do telegram 
+
 Gráficos e relatórios:
 peças aprovadas
 peças reprovadas
