@@ -12,11 +12,11 @@ CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type"])
 
 # Configurações de conexão com o banco de dados
 db_config = {
-    'host': '127.0.0.1',
-    'port': 3306,
-    'user': 'Guedes',
-    'password': 'Guedes182!*@',
-    'database': 'bdteste',
+    'host': 'monorail.proxy.rlwy.net',
+    'port': 56939,
+    'user': 'root',
+    'password': 'bHeg1H1c5F14bh5fdbdcDAd6E4E-f64d',
+    'database': 'railway',
 }
 
 def execute_query(query, values=None):
