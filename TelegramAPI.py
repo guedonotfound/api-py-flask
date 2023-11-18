@@ -53,6 +53,9 @@ def send_denied_verify(part):
     msg = bot.send_message(chat_ins_id, text)
     user_requests[chat_ins_id] = {"message_id": msg.message_id, "serial_num" : part}
 
+def send_misplaced_part():
+    pass
+
 def send_password_message(chat_id, code):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     button1 = types.KeyboardButton("Fui eu")
