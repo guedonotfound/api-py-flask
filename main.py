@@ -443,8 +443,8 @@ def validate_misplaced_part():
         query = """
             INSERT INTO parts (serial_number, model_prefix, status, datetime_verif)
             SELECT
-                SUBSTRING(serial_number, 1, 2) as model_prefix,
-                SUBSTRING(serial_number, 3) as serial_number,
+                serial_number,
+                model_prefix,
                 status,
                 datetime_verif
             FROM
@@ -452,6 +452,7 @@ def validate_misplaced_part():
             WHERE
                 serial_number = %s        
         """
+        print(part['serial_number'][2:])
         values = (part['serial_number'][2:])
         execute_query(query, values)
         query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
