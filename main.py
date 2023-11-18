@@ -151,8 +151,12 @@ def get_models():
 
 # Rota para salvar um modelo de peça
 @app.route('/model/save', methods=['POST'])
-def save_model():
-    model = request.json
+def save_model(prefix=None, model_name=None):
+    if prefix == None and model_name == None:
+        model = request.json
+    else:
+        model['prefix'] = prefix
+        model['model'] = model_name
     query = 'INSERT INTO model_parts (prefix, model) VALUES (upper(%s), upper(%s))'
     values = (model['prefix'], model['model'])
     
@@ -211,20 +215,14 @@ def check_code():
                 statusCode=200
             )
         )
-    elif serial_number[:2] == "CR":
-        query = 'INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif) VALUES (%s, %s, NOW()'
+    else:
+        query = 'INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif, status) VALUES (%s, %s, NOW(), null'
+        execute_query(query)
         values = (serial_number[2:], serial_number[:2])
         return make_response(
             jsonify(
                 message="Peça desviada",
                 statusCode=501
-            )
-        )
-    else:
-        return make_response(
-            jsonify(
-                message="Prefixo não validado",
-                statusCode=500
             )
         )
 
@@ -250,6 +248,8 @@ def insert_new_part():
                 statusCode = 500
             )
         )
+
+
 
 # Rota para validar uma peça
 @app.route('/parts/validate', methods=['PUT'])
@@ -396,9 +396,10 @@ def change_password(password=None, code=None):
             )
         )
 
+#Rota para listar peças extraviadas
 @app.route('/parts/misplaced', methods=['GET'])
 def get_misplaced_parts():
-    query = 'SELECT * FROM misplaced_parts'
+    query = "SELECT * FROM misplaced_parts WHERE status IN ('Aprovado', 'Reprovado')"
     parts_db = execute_query(query)
     if parts_db:
         list_parts = []
@@ -423,7 +424,26 @@ def get_misplaced_parts():
                 statusCode=500
             )
         )
-    
+
+#Rota para aprovar/reprovar peça extraviada
+@app.route('/parts/misplaced/action', methods=['POST'])
+def validate_misplaced_part():
+    part = request.json
+    if part['action'] == 1:
+        query = "UPDATE misplaced_parts SET status = 'Extravidado' WHERE serial-number = %s"
+        values = (part['serial_number'])
+        execute_query(query, values)
+        return make_response(
+            jsonify(
+                message='Peça revogada',
+                statusCode=200
+            )
+        )
+    else:
+        query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
+        values = (part['serial_number'])
+        save_model(part['serial_number'][:2], part['model'])
+
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
 def count_parts():
