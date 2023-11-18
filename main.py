@@ -446,8 +446,8 @@ def validate_misplaced_part():
             FROM model_parts
             WHERE serial_number = %s;
         """
-        print(part['serial_number'][2:])
         values = (part['serial_number'][2:])
+        print(values)
         execute_query(query, values)
         '''query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
         values = (part['serial_number'][2:])
