@@ -455,7 +455,7 @@ def validate_misplaced_part():
         values = (part['serial_number'])
         execute_query(query, values)
         query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
-        values = (part['serial_number'])
+        values = (part['serial_number'][2:])
         execute_query(query, values)
         return make_response(
             jsonify(
