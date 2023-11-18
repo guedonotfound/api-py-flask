@@ -406,7 +406,6 @@ def get_misplaced_parts():
         data_hora = str(part[2])
         part_info = {
             'serial_number': serial_number,
-            'model': part[9],
             'status': part[3],
             'datetime_verif': data_hora
         }
