@@ -395,6 +395,22 @@ def change_password(password=None, code=None):
                 statusCode=200
             )
         )
+
+@app.route('/parts/misplaced', methods=['GET'])
+def get_misplaced_parts():
+    query = 'SELECT * FROM misplaced_parts'
+    parts_db = execute_query(query)
+    list_parts = []
+    for part in parts_db:
+        serial_number = part[1] + str(part[0])
+        data_hora = str(part[2])
+        part_info = {
+            'serial_number': serial_number,
+            'model': part[9],
+            'status': part[3],
+            'datetime_verif': data_hora
+        }
+        list_parts.append(part_info)
     
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
