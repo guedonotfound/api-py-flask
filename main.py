@@ -455,9 +455,9 @@ def validate_misplaced_part():
         print(part['serial_number'][2:])
         values = (part['serial_number'][2:])
         execute_query(query, values)
-        query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
+        '''query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
         values = (part['serial_number'][2:])
-        execute_query(query, values)
+        execute_query(query, values)'''
         return make_response(
             jsonify(
                 message= 'Prefixo cadastrado e peça aprovada para inspeção',
