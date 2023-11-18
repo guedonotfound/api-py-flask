@@ -201,7 +201,6 @@ def delete_model():
         )
     )
 
-
 # Rota para verificar um código de modelo
 @app.route('/check-code/', methods=['GET'])
 def check_code():
@@ -218,8 +217,9 @@ def check_code():
         )
     else:
         query = 'INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif, status) VALUES (%s, %s, NOW(), null'
-        execute_query(query)
         values = (serial_number[2:], serial_number[:2])
+        execute_query(query, values)
+        TG.send_misplaced_part(serial_number)
         return make_response(
             jsonify(
                 message="Peça desviada",
