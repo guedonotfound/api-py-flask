@@ -430,7 +430,7 @@ def validate_misplaced_part():
     part = request.json
     if part['action'] == 'disapproved':
         query = "UPDATE misplaced_parts SET status = 'Extraviado' WHERE serial_number = %s"
-        values = (part['serial_number'])
+        values = (part['serial_number'][2:])
         execute_query(query, values)
         return make_response(
             jsonify(
