@@ -13,9 +13,9 @@ CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type"])
 # Configurações de conexão com o banco de dados
 db_config = {
     'host': 'monorail.proxy.rlwy.net',
-    'port': 56939,
+    'port': 49050,
     'user': 'root',
-    'password': 'bHeg1H1c5F14bh5fdbdcDAd6E4E-f64d',
+    'password': '2HFH51H1aDgAh3a46HBgGD2hE21Ef62H',
     'database': 'railway',
 }
 
