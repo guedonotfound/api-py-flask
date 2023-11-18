@@ -200,9 +200,9 @@ def delete_model():
 # Rota para verificar um código de modelo
 @app.route('/check-code/', methods=['GET'])
 def check_code():
-    prefix = request.args.get('code')
+    serial_number = request.args.get('code')
     query = 'SELECT * FROM model_parts WHERE prefix = %s'
-    values = [prefix[:2],]
+    values = [serial_number[:2],]
     data = execute_query(query, values)
     if data:
         return make_response(
@@ -211,7 +211,9 @@ def check_code():
                 statusCode=200
             )
         )
-    elif prefix[0:2] == "CR":
+    elif serial_number[:2] == "CR":
+        query = 'INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif) VALUES (%s, %s, NOW()'
+        values = (serial_number[2:], serial_number[:2])
         return make_response(
             jsonify(
                 message="Peça desviada",
@@ -231,7 +233,7 @@ def check_code():
 def insert_new_part():
     part = request.json
     try:
-        status = 'S' if part['status'] == 0 else ('N' if part['status'] == 1 else 'E')
+        status = 'S' if part['status'] == 0 else 'N'
         query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (upper(%s), upper(%s), upper(%s), NOW())"
         values = (part['codigo_de_barras'][2:], part['codigo_de_barras'][:2], status)
         execute_query(query, values)
@@ -408,11 +410,12 @@ def count_parts():
         FROM model_parts m
         LEFT JOIN parts p ON m.prefix = p.model_prefix
     """
+    query_misplaced_parts = "SELECT COUNT(*) FROM misplaced_parts"
     if initial_date and final_date:
         values = (initial_date + " 00:00:00", final_date + " 23:59:59")
         query += " WHERE datetime_valid >= %s AND datetime_valid <= %s"
+        query_misplaced_parts += " WHERE datetime_verif >= %s AND datetime_verif <= %s"
     query += " GROUP BY m.prefix WITH ROLLUP"
-    query_misplaced_parts = "SELECT COUNT(*) FROM misplaced_parts"
     misplaced_parts = execute_query(query_misplaced_parts)
     try:
         results = execute_query(query, values)
