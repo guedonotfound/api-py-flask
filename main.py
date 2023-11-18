@@ -444,7 +444,7 @@ def validate_misplaced_part():
             INSERT INTO parts (serial_number, model_prefix, status, datetime_verif)
             SELECT serial_number, model_prefix, status, datetime_verif
             FROM misplaced_parts
-            WHERE serial_number = %s;
+            WHERE serial_number = '%s';
         """
         values = (part['serial_number'][2:])
         print(values)
