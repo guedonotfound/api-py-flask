@@ -152,7 +152,8 @@ def get_models():
 # Rota para salvar um modelo de peça
 @app.route('/model/save', methods=['POST'])
 def save_model(prefix=None, model_name=None):
-    if prefix == None and model_name == None:
+    model = None
+    if not (prefix and model_name):
         model = request.json
     else:
         model['prefix'] = prefix
@@ -171,13 +172,13 @@ def save_model(prefix=None, model_name=None):
         message = f'Erro na consulta ou conexão com o banco de dados: {str(e)}'
         status_code = 500
 
-    return make_response(
-        jsonify(
-            message=message,
-            statusCode=status_code
+    if not (prefix and model_name):
+        return make_response(
+            jsonify(
+                message=message,
+                statusCode=status_code
+            )
         )
-    )
-
 
 # Rota para deletar um modelo de peça
 @app.route('/delete-model/', methods=['DELETE'])
@@ -248,8 +249,6 @@ def insert_new_part():
                 statusCode = 500
             )
         )
-
-
 
 # Rota para validar uma peça
 @app.route('/parts/validate', methods=['PUT'])
@@ -429,8 +428,8 @@ def get_misplaced_parts():
 @app.route('/parts/misplaced/action', methods=['POST'])
 def validate_misplaced_part():
     part = request.json
-    if part['action'] == 1:
-        query = "UPDATE misplaced_parts SET status = 'Extravidado' WHERE serial-number = %s"
+    if part['action'] == 'disapproved':
+        query = "UPDATE misplaced_parts SET status = 'Extraviado' WHERE serial_number = %s"
         values = (part['serial_number'])
         execute_query(query, values)
         return make_response(
@@ -440,9 +439,30 @@ def validate_misplaced_part():
             )
         )
     else:
+        save_model(part['serial_number'][:2], part['model'])
+        query = """
+            INSERT INTO parts (serial_number, model_prefix, status, datetime_verif)
+            SELECT
+                SUBSTRING(serial_number, 1, 2) as model_prefix,
+                SUBSTRING(serial_number, 3) as serial_number,
+                status,
+                datetime_verif
+            FROM
+                misplaced_parts
+            WHERE
+                serial_number = %s        
+        """
+        values = (part['serial_number'])
+        execute_query(query, values)
         query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
         values = (part['serial_number'])
-        save_model(part['serial_number'][:2], part['model'])
+        execute_query(query, values)
+        return make_response(
+            jsonify(
+                message= 'Prefixo cadastrado e peça aprovada para inspeção',
+                statusCode=200
+            )
+        )
 
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
