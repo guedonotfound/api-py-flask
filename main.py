@@ -482,7 +482,7 @@ def count_parts():
     if initial_date and final_date:
         values = (initial_date + " 00:00:00", final_date + " 23:59:59")
         query += " WHERE datetime_valid >= %s AND datetime_valid <= %s"
-        query_misplaced_parts += " WHERE datetime_verif >= %s AND datetime_verif <= %s"
+        query_misplaced_parts += " WHERE datetime_verif >= %s AND datetime_verif <= %s AND status IN ('Aprovado', 'Reprovado')"
     query += " GROUP BY m.prefix WITH ROLLUP"
     misplaced_parts = execute_query(query_misplaced_parts)
     try:
