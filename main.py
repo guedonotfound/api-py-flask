@@ -152,7 +152,7 @@ def get_models():
 # Rota para salvar um modelo de peça
 @app.route('/model/save', methods=['POST'])
 def save_model(prefix=None, model_name=None):
-    model = list
+    model = {}
     if not (prefix and model_name):
         model = request.json
     else:
