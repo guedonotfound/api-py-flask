@@ -442,15 +442,9 @@ def validate_misplaced_part():
         save_model(part['serial_number'][:2], part['model'])
         query = """
             INSERT INTO parts (serial_number, model_prefix, status, datetime_verif)
-            SELECT
-                serial_number,
-                model_prefix,
-                status,
-                datetime_verif
-            FROM
-                misplaced_parts
-            WHERE
-                serial_number = %s        
+            SELECT serial_number, model_prefix, status, datetime_verif
+            FROM model_parts
+            WHERE serial_number = %s;
         """
         print(part['serial_number'][2:])
         values = (part['serial_number'][2:])
