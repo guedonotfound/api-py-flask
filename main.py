@@ -179,7 +179,7 @@ def delete_model():
     query = 'DELETE FROM model_parts WHERE prefix = %s'
     values = [prefix]
     rows = execute_query(query, values)
-    if rows > 0:
+    if rows:
         message = 'Modelo deletado com sucesso'
         status_code = 200
     else:
