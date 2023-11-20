@@ -28,22 +28,18 @@ class DBErrors:
 
     @staticmethod
     def handle_error(exception):
-        if isinstance(exception, pymysql.IntegrityError):
+        if isinstance(exception, pymysql.Error):
             error_info = {
-                "error_type": "IntegrityError",
-                "error_message": str(exception),
-                "error_code": exception.args[0]
-            }
-        else:
-            error_info = {
-                "error_type": "GenericError",
+                "error_type": type(exception).__name__,
                 "error_message": str(exception),
                 "error_code": getattr(exception, 'args', [])[0]
             }
 
-        error_info["error_description"] = DBErrors.ERROR_MAP.get(
-            error_info["error_code"],
-            f"Erro Genérico para Código {error_info['error_code']}"
-        )
+            error_info["error_description"] = DBErrors.ERROR_MAP.get(
+                error_info["error_code"],
+                f"Erro Genérico para Código {error_info['error_code']}"
+            )
 
-        return error_info
+            return error_info
+        else:
+            raise exception
