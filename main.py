@@ -179,9 +179,13 @@ def delete_model():
     query = 'DELETE FROM model_parts WHERE prefix = %s'
     values = [prefix]
     rows = execute_query(query, values)
-    print(rows)
-    message = 'Modelo deletado com sucesso'
-    status_code = 200
+    if rows > 0:
+        message = 'Modelo deletado com sucesso'
+        status_code = 200
+    else:
+        message = 'Impossível excluir, há registros vinculados'
+        status_code = 500
+
     return make_response(
         jsonify(
             message=message,
