@@ -1,5 +1,4 @@
-# db_errors.py
-
+import pymysql
 class DBErrors:
     ERROR_MAP = {
         1048: "Erro ao adicionar ou atualizar o registro. Não é permitido valor nulo em uma coluna obrigatória.",
@@ -29,11 +28,18 @@ class DBErrors:
 
     @staticmethod
     def handle_error(exception):
-        error_info = {
-            "error_type": "GenericError",
-            "error_message": str(exception),
-            "error_code": getattr(exception, 'args', [])[0]
-        }
+        if isinstance(exception, pymysql.IntegrityError):
+            error_info = {
+                "error_type": "IntegrityError",
+                "error_message": str(exception),
+                "error_code": exception.args[0]
+            }
+        else:
+            error_info = {
+                "error_type": "GenericError",
+                "error_message": str(exception),
+                "error_code": getattr(exception, 'args', [])[0]
+            }
 
         error_info["error_description"] = DBErrors.ERROR_MAP.get(
             error_info["error_code"],
