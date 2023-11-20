@@ -22,11 +22,12 @@ def execute_query(query, values=None):
                 mycursor.execute(query, values)
             else:
                 mycursor.execute(query)
-            if query.upper().startswith(("INSERT", "UPDATE", "DELETE")):
+            if query.startswith(("INSERT", "UPDATE", "DELETE")):
                 rows = mycursor.rowcount
                 mydb.commit()
             else:
                 result = mycursor.fetchall()
+        print(result, rows)
         return result, rows if rows else result
     except pymysql.Error as e:
         print(DBErrors.handle_error(e))
