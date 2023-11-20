@@ -440,8 +440,8 @@ def validate_misplaced_part():
         )
     else:
         save_model(part['serial_number'][:2], part['model'])
-        query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
-        values = (part['serial_number'][2:])
+        query = "DELETE FROM misplaced_parts WHERE model_prefix = %s"
+        values = (part['serial_number'][:2])
         execute_query(query, values)
         verify_misplaced_prefixes(part['serial_number'][:2])
         return make_response(
@@ -450,13 +450,6 @@ def validate_misplaced_part():
                 statusCode=200
             )
         )
-
-#Função para verificar demais peças extraviadas com mesmo prefixo de uma aprovada
-def verify_misplaced_prefixes(prefix):
-    query = 'SELECT serial_number FROM misplaced_parts WHERE model_prefix = %s'
-    values = (prefix)
-    data = execute_query(query, values)
-    print(data)
 
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
