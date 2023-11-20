@@ -403,7 +403,7 @@ def change_password(password=None, code=None):
 #Rota para listar peças extraviadas
 @app.route('/parts/misplaced', methods=['GET'])
 def get_misplaced_parts():
-    query = "SELECT * FROM misplaced_parts WHERE status IN ('Aprovado', 'Reprovado')"
+    query = "SELECT * FROM misplaced_parts WHERE status IN ('S', 'N')"
     parts_db = execute_query(query)
     if parts_db:
         list_parts = []
@@ -445,7 +445,7 @@ def validate_misplaced_part():
         )
     else:
         save_model(part['serial_number'][:2], part['model'])
-        query = """
+        '''query = """
             INSERT INTO parts (serial_number, model_prefix, status, datetime_verif)
             SELECT serial_number, model_prefix, status, datetime_verif
             FROM misplaced_parts
@@ -453,10 +453,10 @@ def validate_misplaced_part():
         """
         values = (str(part['serial_number'][2:]),)
         print(values)
-        execute_query(query, values)
-        '''query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
-        values = (part['serial_number'][2:])
         execute_query(query, values)'''
+        query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
+        values = (part['serial_number'][2:])
+        execute_query(query, values)
         return make_response(
             jsonify(
                 message= 'Prefixo cadastrado e peça aprovada para inspeção',
