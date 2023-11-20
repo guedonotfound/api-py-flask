@@ -453,7 +453,7 @@ def validate_misplaced_part():
 
 #Função para verificar demais peças extraviadas com mesmo prefixo de uma aprovada
 def verify_misplaced_prefixes(prefix):
-    query = 'SELECT serial_number FROM misplaced_parts WHERE model_prefix = %S'
+    query = 'SELECT serial_number FROM misplaced_parts WHERE model_prefix = %s'
     values = (prefix)
     data = execute_query(query, values)
     print(data)
