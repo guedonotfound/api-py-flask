@@ -27,7 +27,7 @@ def execute_query(query, values=None):
                 mydb.commit()
             else:
                 result = mycursor.fetchall()
-        return result, rows if rows else result
+        return result, rows
     except pymysql.Error as e:
         print(DBErrors.handle_error(e))
 
@@ -132,7 +132,7 @@ def get_parts_or_part():
 @app.route('/model-parts', methods=['GET'])
 def get_models():
     query = "SELECT prefix, model FROM model_parts"
-    models_db = execute_query(query)
+    rows, models_db = execute_query(query)
     list_models = [{"prefix": prefix, "model": model} for prefix, model in models_db]
     return make_response(
         jsonify(
