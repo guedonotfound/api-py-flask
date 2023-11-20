@@ -14,6 +14,7 @@ CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type"])
 
 def execute_query(query, values=None):
     result = None
+    rows = 0
     try:
         with pymysql.connect(**db_config) as mydb:
             mycursor = mydb.cursor()
@@ -22,10 +23,11 @@ def execute_query(query, values=None):
             else:
                 mycursor.execute(query)
             if query.upper().startswith(("INSERT", "UPDATE", "DELETE")):
+                rows = mycursor.rowcount
                 mydb.commit()
             else:
                 result = mycursor.fetchall()
-        return result
+        return result, rows
     except pymysql.Error as e:
         DBErrors.handle_error(e)
 
@@ -152,6 +154,7 @@ def save_model(prefix=None, model_name=None):
     values = (model['prefix'], model['model'])
     
     result = execute_query(query, values)
+    print(result)
     
     if result is not None:
         message = 'Modelo cadastrado com sucesso'
