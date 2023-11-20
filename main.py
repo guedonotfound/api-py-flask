@@ -29,7 +29,7 @@ def execute_query(query, values=None):
                 result = mycursor.fetchall()
         return result, rows
     except pymysql.Error as e:
-        DBErrors.handle_error(e)
+        print(DBErrors.handle_error(e))
 
 def serialize_user(user):
     return {
