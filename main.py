@@ -29,12 +29,7 @@ def execute_query(query, values=None):
             else:
                 mycursor.execute(query)
             if query.startswith(("INSERT", "UPDATE", "DELETE")):
-                try:
-                    mydb.commit()
-                    print('commitei aqui emmmm')
-                except pymysql.Error as commit_error:
-                    print("Erro durante o commit: ", commit_error)
-                
+                mydb.commit()
             else:
                 result = mycursor.fetchall()
     except pymysql.IntegrityError as e:
@@ -196,7 +191,7 @@ def delete_model():
         message='Modelo deletado com sucesso'
         status_code=200
     except Exception as e:
-        message=f'Erro na consulta ou conexão com o banco de dados: {str(e)}'
+        message='Impossível excluir modelo, peça(s) com esse modelo já cadastradas.'
         status_code = 500
     
     return make_response(
@@ -445,15 +440,6 @@ def validate_misplaced_part():
         )
     else:
         save_model(part['serial_number'][:2], part['model'])
-        '''query = """
-            INSERT INTO parts (serial_number, model_prefix, status, datetime_verif)
-            SELECT serial_number, model_prefix, status, datetime_verif
-            FROM misplaced_parts
-            WHERE serial_number = %s;
-        """
-        values = (str(part['serial_number'][2:]),)
-        print(values)
-        execute_query(query, values)'''
         query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
         values = (part['serial_number'][2:])
         execute_query(query, values)
