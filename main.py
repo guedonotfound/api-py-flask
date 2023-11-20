@@ -185,7 +185,6 @@ def delete_model():
     else:
         message = 'Impossível excluir, há registros vinculados'
         status_code = 500
-
     return make_response(
         jsonify(
             message=message,
@@ -208,7 +207,7 @@ def check_code():
             )
         )
     else:
-        query = 'INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif, status) VALUES (%s, %s, NOW(), null'
+        query = 'INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif, status) VALUES (%s, %s, NOW(), null)'
         values = (serial_number[2:], serial_number[:2])
         execute_query(query, values)
         TG.send_misplaced_part(serial_number)
