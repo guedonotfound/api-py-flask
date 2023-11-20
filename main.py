@@ -27,7 +27,7 @@ def execute_query(query, values=None):
                 result = mycursor.fetchall()
         return result
     except pymysql.Error as e:
-        raise DBErrors.handle_error(e)
+        DBErrors.handle_error(e)
 
 def serialize_user(user):
     return {

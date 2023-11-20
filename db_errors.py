@@ -42,4 +42,4 @@ class DBErrors:
 
             return error_info
         else:
-            raise exception
+            raise TypeError("Exceção não derivada de BaseException")
