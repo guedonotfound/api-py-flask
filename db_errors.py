@@ -28,13 +28,16 @@ class DBErrors:
 
 
     @staticmethod
-    def handle_error(e):
+    def handle_error(exception):
         error_info = {
             "error_type": "GenericError",
-            "error_message": str(e),
-            "error_code": e.args[0]
+            "error_message": str(exception),
+            "error_code": getattr(exception, 'args', [])[0]
         }
 
-        error_info["error_description"] = DBErrors.ERROR_MAP.get(e.args[0], f"Erro Genérico para Código {e.args[0]}")
+        error_info["error_description"] = DBErrors.ERROR_MAP.get(
+            error_info["error_code"],
+            f"Erro Genérico para Código {error_info['error_code']}"
+        )
 
         return error_info
