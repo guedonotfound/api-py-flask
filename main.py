@@ -27,7 +27,7 @@ def execute_query(query, values=None):
                 mydb.commit()
             else:
                 result = mycursor.fetchall()
-        return result, rows
+        return result
     except pymysql.Error as e:
         print(DBErrors.handle_error(e))
 
