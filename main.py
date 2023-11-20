@@ -450,6 +450,13 @@ def validate_misplaced_part():
             )
         )
 
+#Função para verificar demais peças extraviadas com mesmo prefixo de uma aprovada
+def verify_misplaced_prefixes(prefix):
+    query = 'SELECT serial_number FROM misplaced_parts WHERE model_prefix = %S'
+    values = (prefix)
+    data = execute_query(query, values)
+    print(data)
+
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
 def count_parts():
