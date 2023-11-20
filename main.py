@@ -443,6 +443,7 @@ def validate_misplaced_part():
         query = "DELETE FROM misplaced_parts WHERE serial_number = %s"
         values = (part['serial_number'][2:])
         execute_query(query, values)
+        verify_misplaced_prefixes(part['serial_number'][:2])
         return make_response(
             jsonify(
                 message= 'Prefixo cadastrado e peça aprovada para inspeção',
