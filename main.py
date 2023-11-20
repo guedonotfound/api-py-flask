@@ -150,9 +150,16 @@ def save_model(prefix=None, model_name=None):
         model['model'] = model_name
     query = 'INSERT INTO model_parts (prefix, model) VALUES (upper(%s), upper(%s))'
     values = (model['prefix'], model['model'])
-    execute_query(query, values)
-    message = 'Modelo cadastrado com sucesso'
-    status_code = 200
+    
+    result = execute_query(query, values)
+    
+    if result is not None:
+        message = 'Modelo cadastrado com sucesso'
+        status_code = 200
+    else:
+        message = 'Erro ao cadastrar o modelo'
+        status_code = 500
+
     if not (prefix and model_name):
         return make_response(
             jsonify(
@@ -167,7 +174,8 @@ def delete_model():
     prefix = request.args.get('prefix')
     query = 'DELETE FROM model_parts WHERE prefix = %s'
     values = [prefix]
-    execute_query(query, values)
+    rows = execute_query(query, values)
+    print(rows)
     message = 'Modelo deletado com sucesso'
     status_code = 200
     return make_response(
@@ -210,13 +218,21 @@ def insert_new_part():
     status = 'S' if part['status'] == 0 else 'N'
     query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (upper(%s), upper(%s), upper(%s), NOW())"
     values = (part['codigo_de_barras'][2:], part['codigo_de_barras'][:2], status)
-    execute_query(query, values)
-    return make_response(
-        jsonify(
-            message="Peça cadastrada",
-            statusCode=200
+    result = execute_query(query, values)
+    if result is not None:  # Verifica se a consulta foi bem-sucedida
+        return make_response(
+            jsonify(
+                message="Peça cadastrada",
+                statusCode=200
+            )
         )
-    )
+    else:
+        return make_response(
+            jsonify(
+                message="Erro ao cadastrar a peça",
+                statusCode=500
+            )
+        )
 
 # Rota para validar uma peça
 @app.route('/parts/validate', methods=['PUT'])
