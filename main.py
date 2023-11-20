@@ -134,7 +134,7 @@ def get_models():
     query = "SELECT prefix, model FROM model_parts"
     models_db = execute_query(query)
     print(models_db)
-    list_models = [{"prefix": prefix, "model": model} for prefix, model in models_db]
+    list_models = [[{"prefix": prefix, "model": model} for prefix, model in models_db]]
     return make_response(
         jsonify(
             info=list_models,
