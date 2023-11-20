@@ -27,7 +27,7 @@ def execute_query(query, values=None):
                 result = mycursor.fetchall()
         return result
     except pymysql.IntegrityError as e:
-        raise DBErrors.handle_error("IntegrityError", e)
+        raise DBErrors.handle_error(e)
     except pymysql.Error as e:
         raise DBErrors.handle_error("GenericError", e)
 
