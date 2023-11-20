@@ -5,22 +5,14 @@ from pymysql import IntegrityError
 import hashlib
 import threading
 import TelegramAPI as TG
+from config import db_config
+from db_errors import DBErrors
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type"])
 
-# Configurações de conexão com o banco de dados
-db_config = {
-    'host': 'monorail.proxy.rlwy.net',
-    'port': 49050,
-    'user': 'root',
-    'password': '2HFH51H1aDgAh3a46HBgGD2hE21Ef62H',
-    'database': 'railway',
-}
-
 def execute_query(query, values=None):
-    result = None
     try:
         with pymysql.connect(**db_config) as mydb:
             mycursor = mydb.cursor()
@@ -28,15 +20,15 @@ def execute_query(query, values=None):
                 mycursor.execute(query, values)
             else:
                 mycursor.execute(query)
-            if query.startswith(("INSERT", "UPDATE", "DELETE")):
+            if query.upper().startswith(("INSERT", "UPDATE", "DELETE")):
                 mydb.commit()
             else:
                 result = mycursor.fetchall()
+        return result
     except pymysql.IntegrityError as e:
-        raise e
-    except pymysql.Error as err:
-        print("Erro na consulta ou conexão com o banco de dados: ", err)
-    return result
+        raise DBErrors.handle_error("IntegrityError", e)
+    except pymysql.Error as e:
+        raise DBErrors.handle_error("GenericError", e)
 
 def serialize_user(user):
     return {
@@ -55,7 +47,6 @@ def get_user_or_users():
         values = [code]
     else:
         values = None
-
     users_db = execute_query(query, values)
     if code:
         list_users = serialize_user(users_db[0]) if users_db else {}
@@ -160,18 +151,9 @@ def save_model(prefix=None, model_name=None):
         model['model'] = model_name
     query = 'INSERT INTO model_parts (prefix, model) VALUES (upper(%s), upper(%s))'
     values = (model['prefix'], model['model'])
-    
-    try:
-        execute_query(query, values)
-        message = 'Modelo cadastrado com sucesso'
-        status_code = 200
-    except IntegrityError as e:
-        message = 'Prefixo ou modelo já cadastrado'
-        status_code = 500
-    except Exception as e:
-        message = f'Erro na consulta ou conexão com o banco de dados: {str(e)}'
-        status_code = 500
-
+    execute_query(query, values)
+    message = 'Modelo cadastrado com sucesso'
+    status_code = 200
     if not (prefix and model_name):
         return make_response(
             jsonify(
@@ -186,14 +168,9 @@ def delete_model():
     prefix = request.args.get('prefix')
     query = 'DELETE FROM model_parts WHERE prefix = %s'
     values = [prefix]
-    try:
-        execute_query(query, values)
-        message='Modelo deletado com sucesso'
-        status_code=200
-    except Exception as e:
-        message='Impossível excluir modelo, peça(s) com esse modelo já cadastradas.'
-        status_code = 500
-    
+    execute_query(query, values)
+    message = 'Modelo deletado com sucesso'
+    status_code = 200
     return make_response(
         jsonify(
             message=message,
@@ -231,24 +208,16 @@ def check_code():
 @app.route('/update-status', methods=['POST'])
 def insert_new_part():
     part = request.json
-    try:
-        status = 'S' if part['status'] == 0 else 'N'
-        query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (upper(%s), upper(%s), upper(%s), NOW())"
-        values = (part['codigo_de_barras'][2:], part['codigo_de_barras'][:2], status)
-        execute_query(query, values)
-        return make_response(
-            jsonify(
-                message = "Peça cadastrada",
-                statusCode = 200
-            )
+    status = 'S' if part['status'] == 0 else 'N'
+    query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (upper(%s), upper(%s), upper(%s), NOW())"
+    values = (part['codigo_de_barras'][2:], part['codigo_de_barras'][:2], status)
+    execute_query(query, values)
+    return make_response(
+        jsonify(
+            message="Peça cadastrada",
+            statusCode=200
         )
-    except:
-        return make_response(
-            jsonify(
-                message = 'Peça repetida',
-                statusCode = 500
-            )
-        )
+    )
 
 # Rota para validar uma peça
 @app.route('/parts/validate', methods=['PUT'])
@@ -471,48 +440,40 @@ def count_parts():
         query_misplaced_parts += " WHERE datetime_verif >= %s AND datetime_verif <= %s AND status IN ('Aprovado', 'Reprovado')"
     query += " GROUP BY m.prefix WITH ROLLUP"
     misplaced_parts = execute_query(query_misplaced_parts)
-    try:
-        results = execute_query(query, values)
-        if not results:
-            return make_response(
-                jsonify(
-                    message="Nenhuma peça no período informado",
-                    statusCode=404
-                )
-            )
-        else:
-            response = {
-                "column": [
-                    {
-                        "prefixo": prefix,
-                        "aprovados": aprovados,
-                        "reprovados": reprovados
-                    }
-                    for prefix, aprovados, reprovados in results
-                    if prefix is not None
-                ],
-                "pizza": [
-                    {
-                        "aprovados": results[-1][1] if results and results[-1][1] is not None else 0,
-                        "reprovados": results[-1][2] if results and results[-1][2] is not None else 0,
-                        "extraviados": str(misplaced_parts[0][0]) if misplaced_parts else 0
-                    }
-                ]
-            }
-            return make_response(
-                jsonify(
-                    info=response,
-                    statusCode=200
-                )
-            )
-
-    except Exception as e:
+    results = execute_query(query, values)
+    if not results:
         return make_response(
             jsonify(
-                error=str(e),
-                statusCode=500
+                message="Nenhuma peça no período informado",
+                statusCode=404
             )
         )
+    else:
+        response = {
+            "column": [
+                {
+                    "prefixo": prefix,
+                    "aprovados": aprovados,
+                    "reprovados": reprovados
+                }
+                for prefix, aprovados, reprovados in results
+                if prefix is not None
+            ],
+            "pizza": [
+                {
+                    "aprovados": results[-1][1] if results and results[-1][1] is not None else 0,
+                    "reprovados": results[-1][2] if results and results[-1][2] is not None else 0,
+                    "extraviados": str(misplaced_parts[0][0]) if misplaced_parts else 0
+                }
+            ]
+        }
+        return make_response(
+            jsonify(
+                info=response,
+                statusCode=200
+            )
+        )
+
 
 
 if __name__ == '__main__':
