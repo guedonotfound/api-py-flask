@@ -30,6 +30,7 @@ def execute_query(query, values=None):
                 mycursor.execute(query)
             if query.startswith(("INSERT", "UPDATE", "DELETE")):
                 mydb.commit()
+                print('commitei aqui emmmm')
             else:
                 result = mycursor.fetchall()
     except pymysql.IntegrityError as e:
