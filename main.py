@@ -409,10 +409,10 @@ def get_misplaced_parts():
         list_parts = []
         for part in parts_db:
             serial_number = part[1] + str(part[0])
-            data_hora = str(part[2])
+            data_hora = str(part[3])
             part_info = {
                 'serial_number': serial_number,
-                'status': part[3],
+                'status': part[2],
                 'datetime_verif': data_hora
             }
             list_parts.append(part_info)
