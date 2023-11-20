@@ -13,6 +13,7 @@ app.config['JSON_SORT_KEYS'] = False
 CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type"])
 
 def execute_query(query, values=None):
+    result = None
     try:
         with pymysql.connect(**db_config) as mydb:
             mycursor = mydb.cursor()
