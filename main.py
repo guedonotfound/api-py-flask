@@ -1,7 +1,6 @@
 from flask import Flask, make_response, jsonify, request
 from flask_cors import CORS
 import pymysql
-from pymysql import IntegrityError
 import hashlib
 import threading
 import TelegramAPI as TG
