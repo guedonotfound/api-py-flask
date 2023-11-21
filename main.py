@@ -1,5 +1,8 @@
 from flask import Flask, make_response, jsonify, request
 from flask_cors import CORS
+from flasgger import Swagger
+from flasgger import swag_from
+import swagger_docs as SD
 import pymysql
 import hashlib
 import threading
@@ -8,6 +11,7 @@ from config import db_config
 from db_errors import DBErrors
 
 app = Flask(__name__)
+swagger = Swagger(app)
 app.config['JSON_SORT_KEYS'] = False
 CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers=["Content-Type"])
 
@@ -39,6 +43,7 @@ def serialize_user(user):
 
 # Rota para listar usuários
 @app.route('/users', methods=['GET'])
+@swag_from(SD.USERS_ROUTE_DOCS)
 def get_user_or_users():
     code = request.args.get('code')
     query = "SELECT * FROM users"
@@ -61,6 +66,7 @@ def get_user_or_users():
 
 # Rota para listar peças
 @app.route('/parts', methods=['GET'])
+@swag_from(SD.PARTS_ROUTE_DOCS)
 def get_parts_or_part():
     serial_number = request.args.get('serial_number')
     if serial_number:
@@ -129,6 +135,7 @@ def get_parts_or_part():
 
 # Rota para listar modelos de peças
 @app.route('/model-parts', methods=['GET'])
+@swag_from(SD.MODEL_ROUTE_DOCS)
 def get_models():
     query = "SELECT prefix, model FROM model_parts"
     models_db = execute_query(query)
@@ -143,6 +150,7 @@ def get_models():
 
 # Rota para salvar um modelo de peça
 @app.route('/model/save', methods=['POST'])
+@swag_from(SD.MODEL_SAVE_ROUTE_DOCS)
 def save_model(prefix=None, model_name=None):
     model = {}
     if not (prefix and model_name):
@@ -152,17 +160,13 @@ def save_model(prefix=None, model_name=None):
         model['model'] = model_name
     query = 'INSERT INTO model_parts (prefix, model) VALUES (upper(%s), upper(%s))'
     values = (model['prefix'], model['model'])
-    
     result = execute_query(query, values)
-    print(result)
-    
     if result is not None:
         message = 'Modelo cadastrado com sucesso'
         status_code = 200
     else:
         message = 'Erro ao cadastrar o modelo'
         status_code = 500
-
     if not (prefix and model_name):
         return make_response(
             jsonify(
@@ -173,6 +177,7 @@ def save_model(prefix=None, model_name=None):
 
 # Rota para deletar um modelo de peça
 @app.route('/delete-model/', methods=['DELETE'])
+@swag_from(SD.DELETE_MODEL_ROUTE_DOCS)
 def delete_model():
     prefix = request.args.get('prefix')
     query = 'DELETE FROM model_parts WHERE prefix = %s'
@@ -193,6 +198,7 @@ def delete_model():
 
 # Rota para verificar um código de modelo
 @app.route('/check-code/', methods=['GET'])
+@swag_from(SD.CHECK_CODE_ROUTE_DOCS)
 def check_code(prefix=None):
     code = prefix or request.args.get('code')
     query = 'SELECT * FROM model_parts WHERE prefix = %s'
@@ -222,6 +228,7 @@ def check_code(prefix=None):
 
 # Rota para inserir uma nova peça da esteira
 @app.route('/update-status', methods=['POST'])
+@swag_from(SD.UPDATE_STATUS_ROUTE_DOCS)
 def insert_new_part():
     part = request.json
     status = 'S' if part['status'] == 0 else 'N'
@@ -249,6 +256,7 @@ def insert_new_part():
 
 # Rota para validar uma peça
 @app.route('/parts/validate', methods=['PUT'])
+@swag_from(SD.VALIDATE_PART_ROUTE_DOCS)
 def validate_part():
     part = request.json
     values = None
@@ -273,6 +281,7 @@ def validate_part():
 
 # Rota para validar o login de um usuário
 @app.route('/users/login', methods=['PUT'])
+@swag_from(SD.VERIFY_LOGIN_ROUTE_DOCS)
 def verify_login():
     user = request.json
     query = "SELECT * FROM users WHERE code = %s"
@@ -313,6 +322,7 @@ def verify_login():
 
 # Rota para verificar o código de um usuário
 @app.route('/users/verify-user-code', methods=['GET'])
+@swag_from(SD.VERIFY_USER_CODE_ROUTE_DOCS)
 def verify_user_code():
     code = request.args.get('code')
     query = "SELECT * FROM users WHERE code = %s"
@@ -341,6 +351,7 @@ def verify_user_code():
 
 # Rota para alterar a permissão de um usuário
 @app.route('/users/permission', methods=['PUT'])
+@swag_from(SD.ALTER_PERMISSION_ROUTE_DOCS)
 def alter_permission():
     user = request.json
     query = "UPDATE users SET permission = %s WHERE code = %s"
@@ -355,6 +366,7 @@ def alter_permission():
 
 # Rota para alterar a senha de um usuário (envia mensagem pelo bot)
 @app.route('/users/forgot-password/', methods=['GET'])
+@swag_from(SD.SEND_MESSAGE_PASSWORD_ROUTE_DOCS)
 def send_message_password():
     user_code = request.args.get('code')
     user_db = execute_query("SELECT * FROM users WHERE code = %s", [user_code])
@@ -374,6 +386,7 @@ def send_message_password():
 
 # Função para alterar senha de um usuário
 @app.route('/users/change-password', methods=['PUT'])
+@swag_from(SD.CHANGE_PASSWORD_ROUTE_DOCS)
 def change_password(password=None, code=None):
     if password:
         password = hashlib.sha256((password).encode('utf-8')).hexdigest()
@@ -394,6 +407,7 @@ def change_password(password=None, code=None):
 
 #Rota para listar peças extraviadas
 @app.route('/parts/misplaced', methods=['GET'])
+@swag_from(SD.GET_MISPLACED_PARTS_ROUTE_DOCS)
 def get_misplaced_parts():
     query = "SELECT * FROM misplaced_parts WHERE status IN ('S', 'N')"
     parts_db = execute_query(query)
@@ -423,6 +437,7 @@ def get_misplaced_parts():
 
 #Rota para aprovar/reprovar peça extraviada
 @app.route('/parts/misplaced/action', methods=['POST'])
+@swag_from(SD.VALIDATE_MISPLACED_PART_ROUTE_DOCS)
 def validate_misplaced_part():
     part = request.json
     if part['action'] == 'disapproved':
@@ -449,6 +464,7 @@ def validate_misplaced_part():
 
 # Rota para contabilizar peças aprovadas e reprovadas
 @app.route('/parts/count', methods=['GET'])
+@swag_from(SD.COUNT_PARTS_ROUTE_DOCS)
 def count_parts():
     values = None
     initial_date = request.args.get('initialDate')
