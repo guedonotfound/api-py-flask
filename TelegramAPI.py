@@ -61,13 +61,14 @@ def send_misplaced_part(part):
     user_requests[chat_ins_id] = {"message_id": msg.message_id, "serial_num" : part}
 
 def send_password_message(chat_id, code):
+    user_code = code
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     button1 = types.KeyboardButton("Fui eu")
     button2 = types.KeyboardButton("Não fui eu")
     keyboard.add(button1, button2)
     text = "Olá! Verifiquei que você solicitou a alteração de sua senha. Foi você mesmo?"
     msg = bot.send_message(chat_id, text, reply_markup=keyboard)
-    user_requests[chat_user_id] = {"message_id": msg.message_id, "code": code}
+    user_requests[chat_user_id] = {"message_id": msg.message_id, "code": user_code}
 
 @bot.message_handler(func=lambda message: message.text == "Fui eu")
 def handle_fui_eu(message):

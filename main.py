@@ -194,10 +194,10 @@ def delete_model():
 
 # Rota para verificar um código de modelo
 @app.route('/check-code/', methods=['GET'])
-def check_code():
-    serial_number = request.args.get('code')
+def check_code(prefix=None):
+    code = prefix or request.args.get('code')
     query = 'SELECT * FROM model_parts WHERE prefix = %s'
-    values = [serial_number[:2],]
+    values = [code[:2],]
     data = execute_query(query, values)
     if data:
         return make_response(
@@ -205,26 +205,33 @@ def check_code():
                 message="Prefixo validado",
                 statusCode=200
             )
-        )
+        ) if not prefix else True
     else:
-        query = 'INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif, status) VALUES (%s, %s, NOW(), null)'
-        values = (serial_number[2:], serial_number[:2])
-        execute_query(query, values)
-        TG.send_misplaced_part(serial_number)
-        return make_response(
-            jsonify(
-                message="Peça desviada",
-                statusCode=501
+        if not prefix:
+            query = 'INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif, status) VALUES (%s, %s, NOW(), NULL)'
+            values = (code[2:], code[:2])
+            execute_query(query, values)
+            TG.send_misplaced_part(code)
+            return make_response(
+                jsonify(
+                    message="Peça desviada",
+                    statusCode=501
+                )
             )
-        )
+        else:
+            return False
 
 # Rota para inserir uma nova peça da esteira
 @app.route('/update-status', methods=['POST'])
 def insert_new_part():
     part = request.json
     status = 'S' if part['status'] == 0 else 'N'
-    query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (upper(%s), upper(%s), upper(%s), NOW())"
-    values = (part['codigo_de_barras'][2:], part['codigo_de_barras'][:2], status)
+    if check_code(part['codigo_de_barras']):
+        query = "INSERT INTO parts (serial_number, model_prefix, status, datetime_verif) VALUES (upper(%s), upper(%s), upper(%s), NOW())"
+        values = (part['codigo_de_barras'][2:], part['codigo_de_barras'][:2], status)
+    else:
+        query = "UPDATE misplaced_parts SET status = %s WHERE serial_number = %s"
+        values = (status, part['codigo_de_barras'][2:])
     result = execute_query(query, values)
     if result is not None:  # Verifica se a consulta foi bem-sucedida
         return make_response(
@@ -369,7 +376,7 @@ def send_message_password():
 # Função para alterar senha de um usuário
 @app.route('/users/change-password', methods=['PUT'])
 def change_password(password=None, code=None):
-    if password and code:
+    if password:
         password = hashlib.sha256((password).encode('utf-8')).hexdigest()
         values = (password, code)
     else:
@@ -378,7 +385,7 @@ def change_password(password=None, code=None):
         values = (user['password'], user['code'])
     query = "UPDATE users SET password = %s WHERE code = %s"
     execute_query(query, values)
-    if not (password and code):
+    if not (password):
         return make_response(
             jsonify(
                 message="Senha alterada",
