@@ -201,6 +201,7 @@ def delete_model():
 @swag_from(SD.CHECK_CODE_ROUTE_DOCS)
 def check_code(prefix=None):
     code = prefix or request.args.get('code')
+    print(code)
     query = 'SELECT * FROM model_parts WHERE prefix = %s'
     values = [code[:2],]
     data = execute_query(query, values)
