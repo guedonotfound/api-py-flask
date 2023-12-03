@@ -55,7 +55,7 @@ def send_denied_verify(part):
 
 def send_misplaced_part(part):
     text = ("A peça com número de série " + part + " foi registrada como extravio!" + 
-            "Favor, verificar!"
+            " Favor, verificar!"
     )
     msg = bot.send_message(chat_sup_id, text)
     user_requests[chat_ins_id] = {"message_id": msg.message_id, "serial_num" : part}
