@@ -212,7 +212,7 @@ def check_code(prefix=None):
         ) if not prefix else True
     else:
         if not prefix:
-            query = 'INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif, status) VALUES (%s, %s, NOW(), NULL)'
+            query = "INSERT INTO misplaced_parts (serial_number, model_prefix, datetime_verif, status) VALUES (%s, %s, NOW(), 'N')"
             values = (code[2:], code[:2])
             execute_query(query, values)
             TG.send_misplaced_part(code)
@@ -440,7 +440,7 @@ def get_misplaced_parts():
 def validate_misplaced_part():
     part = request.json
     if part['action'] == 'disapproved':
-        query = "UPDATE misplaced_parts SET status = 'Extraviado' WHERE serial_number = %s"
+        query = "UPDATE misplaced_parts SET status = 'E' WHERE serial_number = %s"
         values = (part['serial_number'][2:])
         execute_query(query, values)
         return make_response(
@@ -451,7 +451,7 @@ def validate_misplaced_part():
         )
     else:
         save_model(part['serial_number'][:2], part['model'])
-        query = "DELETE FROM misplaced_parts WHERE model_prefix = %s"
+        query = "DELETE FROM misplaced_parts WHERE model_prefix = %s AND status = 'N'"
         values = (part['serial_number'][:2])
         execute_query(query, values)
         return make_response(
