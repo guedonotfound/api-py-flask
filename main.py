@@ -139,7 +139,6 @@ def get_parts_or_part():
 def get_models():
     query = "SELECT prefix, model FROM model_parts"
     models_db = execute_query(query)
-    print(models_db)
     list_models = [{"prefix": prefix, "model": model} for prefix, model in models_db]
     return make_response(
         jsonify(
@@ -201,7 +200,6 @@ def delete_model():
 @swag_from(SD.CHECK_CODE_ROUTE_DOCS)
 def check_code(prefix=None):
     code = prefix or request.args.get('code')
-    print(code)
     query = 'SELECT * FROM model_parts WHERE prefix = %s'
     values = [code[:2],]
     data = execute_query(query, values)
