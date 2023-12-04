@@ -45,7 +45,7 @@ def send_denied_inspec(code, inspec, part):
 
 def send_denied_verify(part):
     text = ("A peça com número de série " + part +
-             "passou pela esteira e foi reprovada." + """
+             " passou pela esteira e foi reprovada." + """
     
     Por favor, verificar!
 
