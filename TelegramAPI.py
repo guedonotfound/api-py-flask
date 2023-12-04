@@ -14,10 +14,10 @@ chat_sup_id = -1002056135520
 chat_ins_id = -4007534836
 chat_user_id = None
 
-'''@bot.message_handler()
+@bot.message_handler()
 def responder(message):
     msg = message.chat.id
-    print(msg)'''
+    print(msg)
 
 @bot.message_handler(commands=["Supervisao_realizada"])
 def part_verified(message):
@@ -107,7 +107,7 @@ def handle_nao_fui_eu(message):
     if original_message_id:
         bot.delete_message(user_id, original_message_id)
 
-
+bot.polling()
 def run_telegram_bot():
     print("Iniciando bot do Telegram")
     bot.polling()
