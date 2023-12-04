@@ -239,7 +239,7 @@ def insert_new_part():
         values = (status, part['codigo_de_barras'][2:])
     result = execute_query(query, values)
     if result is not None:
-        if status == 'S':
+        if status == 'N':
             TG.send_denied_verify(part['codigo_de_barras'])
         return make_response(
             jsonify(
