@@ -238,7 +238,9 @@ def insert_new_part():
         query = "UPDATE misplaced_parts SET status = %s WHERE serial_number = %s"
         values = (status, part['codigo_de_barras'][2:])
     result = execute_query(query, values)
-    if result is not None:  # Verifica se a consulta foi bem-sucedida
+    if result is not None:
+        if status == 'S':
+            TG.send_denied_verify(part['codigo_de_barras'])
         return make_response(
             jsonify(
                 message="Peça cadastrada",
